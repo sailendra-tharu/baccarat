@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.baccarat-grid {
+  background-color: #f7f7f7;
+  background-image:
+    linear-gradient(to right, rgba(40, 40, 40, 0.25) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(40, 40, 40, 0.25) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
