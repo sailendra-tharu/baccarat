@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react"
+
 export default function App() {
   const gridBg = (cell: number, line: string) =>
     ({
@@ -5,6 +7,187 @@ export default function App() {
       backgroundSize: `${cell}px ${cell}px`,
       backgroundPosition: `0 0`,
     }) as const
+
+  const HeaderBetChip = ({
+    label,
+    bg,
+    text = "MIN/MAX: 2,000 / 20,000",
+  }: {
+    label: string
+    bg: string
+    text?: string
+  }) => (
+    <div className="flex items-center gap-2 whitespace-nowrap text-[13px] font-black tracking-wider text-[#ffe7a8]">
+      <div
+        className="grid h-5 w-5 place-items-center rounded-[4px] text-[12px] text-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.35)]"
+        style={{ backgroundColor: bg }}
+      >
+        {label}
+      </div>
+      <div className="opacity-95">{text}</div>
+    </div>
+  )
+
+  const [isHeaderEditing, setIsHeaderEditing] = useState(false)
+  const [headerTitle, setHeaderTitle] = useState("Welcome to Baccarat")
+  const [headerLines, setHeaderLines] = useState({
+    banker: "MIN/MAX: 2,000 / 20,000",
+    player: "MIN/MAX: 2,000 / 20,000",
+    tie: "MIN/MAX: 2,000 / 20,000",
+    pair: "PAIR: 2,000 / 20,000",
+    super6: "SUPER6: 2,000 / 20,000",
+  })
+
+  type Bead = "banker" | "player" | "tie" | "bankerPair" | "playerPair" | "super6"
+
+  const beadForKey = (key: number): Bead | null => {
+    switch (key) {
+      case 1:
+        return "banker"
+      case 2:
+        return "player"
+      case 3:
+        return "tie"
+      case 4:
+        return "bankerPair"
+      case 5:
+        return "playerPair"
+      case 6:
+        return "super6"
+      default:
+        return null
+    }
+  }
+
+  const beadNode = (bead: Bead) => {
+    const size = 28
+    switch (bead) {
+      case "banker":
+        return (
+          <div
+            className="grid place-items-center rounded-full bg-[#b90b0b] font-black shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]"
+            style={{ width: size, height: size, fontSize: 20 }}
+          >
+            莊
+          </div>
+        )
+      case "player":
+        return (
+          <div
+            className="grid place-items-center rounded-full bg-[#1a49c8] font-black shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]"
+            style={{ width: size, height: size, fontSize: 20 }}
+          >
+            閒
+          </div>
+        )
+      case "tie":
+        return (
+          <div
+            className="grid place-items-center rounded-full bg-[#1f7a44] font-black shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]"
+            style={{ width: size, height: size, fontSize: 20 }}
+          >
+            和
+          </div>
+        )
+      case "bankerPair":
+        return (
+          <div
+            className="grid place-items-center rounded-full border-[3px] border-[#b90b0b] bg-white font-black text-[#b90b0b] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]"
+            style={{ width: size, height: size, fontSize: 14 }}
+          >
+            B
+          </div>
+        )
+      case "playerPair":
+        return (
+          <div
+            className="grid place-items-center rounded-full border-[3px] border-[#1a49c8] bg-white font-black text-[#1a49c8] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]"
+            style={{ width: size, height: size, fontSize: 14 }}
+          >
+            P
+          </div>
+        )
+      case "super6":
+        return (
+          <div
+            className="grid place-items-center rounded-full bg-[#f7e7b4] font-black text-black shadow-[inset_0_0_0_2px_rgba(0,0,0,0.2)]"
+            style={{ width: size, height: size, fontSize: 14 }}
+          >
+            6
+          </div>
+        )
+    }
+  }
+
+  const [beads, setBeads] = useState<Bead[]>([])
+
+  const addBeadByKey = (key: number) => {
+    const bead = beadForKey(key)
+    if (!bead) return
+    setBeads((prev) => [...prev, bead])
+  }
+
+  useEffect(() => {
+    let last8At = 0
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      const tag = target?.tagName?.toLowerCase()
+      const isTypingSurface =
+        tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable
+      if (isTypingSurface) return
+
+      if (e.key === "8") {
+        const now = Date.now()
+        if (now - last8At <= 700) {
+          setIsHeaderEditing((v) => !v)
+          last8At = 0
+          return
+        }
+        last8At = now
+      }
+
+      if (isHeaderEditing) return
+
+      if (e.key >= "1" && e.key <= "6") {
+        addBeadByKey(Number(e.key))
+      } else if (e.key === "Backspace") {
+        setBeads((prev) => prev.slice(0, -1))
+      } else if (e.key === "Escape") {
+        setBeads([])
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [isHeaderEditing])
+
+  const RoadBeads = ({ cell }: { cell: number }) => {
+    const pad = Math.max(6, Math.floor(cell * 0.18))
+    const beadBox = Math.max(12, Math.min(30, cell - pad * 2))
+    return (
+      <div className="absolute inset-0 p-[6px]">
+        <div
+          className="grid h-full w-full content-start justify-start gap-0"
+          style={{
+            gridTemplateColumns: `repeat(auto-fit, ${cell}px)`,
+            gridAutoRows: `${cell}px`,
+          }}
+        >
+          {beads.map((b, i) => (
+            <div
+              key={i}
+              className="grid place-items-center"
+              style={{ width: cell, height: cell, padding: pad, boxSizing: "border-box" }}
+            >
+              <div style={{ transform: `scale(${beadBox / 30})`, transformOrigin: "center" }}>
+                {beadNode(b)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="h-screen overflow-hidden text-white">
@@ -18,30 +201,77 @@ export default function App() {
             <div className="grid h-full w-full grid-rows-[56px_1fr]">
 
               {/* Header */}
-              <div className="flex items-center justify-between gap-4 bg-blue-800 px-4">
+              <div className="relative flex items-center justify-between gap-4 bg-blue-800 px-4">
                 <div className="flex items-center gap-3">
                   <div className="text-[26px] font-black tracking-wide text-[#ffd25c] drop-shadow-[0_2px_0_rgba(0,0,0,0.35)]">
-                    Welcome to Baccarat
+                    {headerTitle}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-6 text-[18px] font-bold text-[#ffe7a8]">
-                  <div className="whitespace-nowrap">
-                    莊 閒 最低高投注: 2,000/20,000
-                  </div>
-
-                  <div className="whitespace-nowrap">
-                    和 最低高投注: 2,000/20,000
-                  </div>
-
-                  <div className="whitespace-nowrap">
-                    ●● 最低高投注: 2,000/20,000
-                  </div>
-
-                  <div className="whitespace-nowrap">
-                    SUPER6 最低高投注: 1,000/10,000
-                  </div>
+                <div className="flex items-center gap-5">
+                  <HeaderBetChip label="B" bg="#b90b0b" text={headerLines.banker} />
+                  <HeaderBetChip label="P" bg="#1a49c8" text={headerLines.player} />
+                  <HeaderBetChip label="T" bg="#1f7a44" text={headerLines.tie} />
+                  <HeaderBetChip label="●" bg="#d6b54b" text={headerLines.pair} />
+                  <HeaderBetChip label="6" bg="#7a0000" text={headerLines.super6} />
                 </div>
+
+                {isHeaderEditing ? (
+                  <div className="absolute left-0 top-full z-20 w-full bg-blue-950/95 px-4 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur">
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className="text-[13px] font-black tracking-widest text-[#ffe7a8]">
+                        Header Edit (press 88 to close)
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsHeaderEditing(false)}
+                        className="rounded-[10px] bg-white/10 px-3 py-1 text-[12px] font-black text-white hover:bg-white/15"
+                      >
+                        Close
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-6 gap-2">
+                      <input
+                        value={headerTitle}
+                        onChange={(e) => setHeaderTitle(e.target.value)}
+                        className="col-span-2 h-10 rounded-[10px] bg-white px-3 text-[14px] font-black text-black outline-none"
+                        placeholder="Title"
+                      />
+
+                      <input
+                        value={headerLines.banker}
+                        onChange={(e) => setHeaderLines((p) => ({ ...p, banker: e.target.value }))}
+                        className="h-10 rounded-[10px] bg-white px-3 text-[12px] font-black text-black outline-none"
+                        placeholder="B text"
+                      />
+                      <input
+                        value={headerLines.player}
+                        onChange={(e) => setHeaderLines((p) => ({ ...p, player: e.target.value }))}
+                        className="h-10 rounded-[10px] bg-white px-3 text-[12px] font-black text-black outline-none"
+                        placeholder="P text"
+                      />
+                      <input
+                        value={headerLines.tie}
+                        onChange={(e) => setHeaderLines((p) => ({ ...p, tie: e.target.value }))}
+                        className="h-10 rounded-[10px] bg-white px-3 text-[12px] font-black text-black outline-none"
+                        placeholder="T text"
+                      />
+                      <input
+                        value={headerLines.pair}
+                        onChange={(e) => setHeaderLines((p) => ({ ...p, pair: e.target.value }))}
+                        className="h-10 rounded-[10px] bg-white px-3 text-[12px] font-black text-black outline-none"
+                        placeholder="PAIR text"
+                      />
+                      <input
+                        value={headerLines.super6}
+                        onChange={(e) => setHeaderLines((p) => ({ ...p, super6: e.target.value }))}
+                        className="h-10 rounded-[10px] bg-white px-3 text-[12px] font-black text-black outline-none"
+                        placeholder="SUPER6 text"
+                      />
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               {/* Board */}
@@ -54,15 +284,7 @@ export default function App() {
                       className="relative h-full w-full rounded-[7px] bg-white"
                       style={gridBg(38, "rgba(0,0,0,0.22)")}
                     >
-                      <div className="absolute right-6 bottom-4 text-[42px] font-semibold tracking-widest text-black/18 select-none">
-                        大路
-                      </div>
-
-                      <div className="absolute left-3 top-3 flex gap-2">
-                        <div className="h-6 w-6 rounded-full border-[4px] border-red-600 bg-white" />
-                        <div className="h-6 w-6 rounded-full border-[4px] border-blue-600 bg-white" />
-                        <div className="h-6 w-6 rounded-full border-[4px] border-red-600 bg-white" />
-                      </div>
+                      <RoadBeads cell={38} />
                     </div>
                   </div>
 
@@ -76,14 +298,7 @@ export default function App() {
                           className="relative h-full w-full rounded-[7px] bg-white"
                           style={gridBg(34, "rgba(0,0,0,0.22)")}
                         >
-                          <div className="absolute right-6 bottom-4 text-[36px] font-semibold tracking-widest text-black/18 select-none">
-                            大眼仔
-                          </div>
-
-                          <div className="absolute left-3 top-3 flex gap-2">
-                            <div className="h-4 w-4 rounded-full border-[3px] border-red-600 bg-white" />
-                            <div className="h-4 w-4 rounded-full border-[3px] border-blue-600 bg-white" />
-                          </div>
+                          <RoadBeads cell={34} />
                         </div>
                       </div>
                     </div>
@@ -95,9 +310,7 @@ export default function App() {
                           className="relative h-full w-full rounded-[7px] bg-white"
                           style={gridBg(34, "rgba(0,0,0,0.22)")}
                         >
-                          <div className="absolute right-6 bottom-4 text-[36px] font-semibold tracking-widest text-black/18 select-none">
-                            曱甴路
-                          </div>
+                          <RoadBeads cell={34} />
                         </div>
                       </div>
                     </div>
@@ -112,27 +325,10 @@ export default function App() {
                         className="relative h-full w-full rounded-[7px] bg-white"
                         style={gridBg(38, "rgba(0,0,0,0.22)")}
                       >
-                        {/* CENTERED INSIDE BOX (visually aligned, not layout centered) */}
-                        <div className="absolute inset-0 flex  justify-start">
-                          <div className="flex flex-col  gap-3">
-                            <div className="grid h-[35px] w-[35px] place-items-center rounded-full bg-[#b90b0b] text-[22px] font-black shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]">
-                              莊
-                            </div>
-
-                            <div className="grid h-[35px] w-[35px] place-items-center rounded-full bg-[#1a49c8] text-[22px] font-black shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]">
-                              閒
-                            </div>
-
-                            <div className="grid h-[35px] w-[35px] place-items-center rounded-full bg-[#b90b0b] text-[22px] font-black shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]">
-                              莊
-                            </div>
-                          </div>
-                        </div>
+                        {/* Beads (row-major: first row fills left -> right) */}
+                        <RoadBeads cell={38} />
 
                         {/* BACKGROUND LABEL */}
-                        <div className="absolute right-6 bottom-4 text-[42px] font-semibold tracking-widest text-black/18 select-none">
-                          珠子路
-                        </div>
                       </div>
                     </div>
 
@@ -145,19 +341,19 @@ export default function App() {
                           <div className="grid grid-cols-[auto_1fr_auto] gap-x-3 gap-y-2 text-[24px] font-black tracking-widest">
 
                             <div className="grid h-10 w-10 place-items-center rounded-full bg-[#b90b0b] text-white">
-                              莊
+                             B
                             </div>
                             <div className="self-center">BANKER</div>
                             <div className="self-center text-right">3</div>
 
                             <div className="grid h-10 w-10 place-items-center rounded-full bg-[#1a49c8] text-white">
-                              閒
+                              P
                             </div>
                             <div className="self-center">PLAYER</div>
                             <div className="self-center text-right">1</div>
 
                             <div className="grid h-10 w-10 place-items-center rounded-full bg-[#1f7a44] text-white">
-                              和
+                              T
                             </div>
                             <div className="self-center">TIE</div>
                             <div className="self-center text-right">0</div>
@@ -193,20 +389,20 @@ export default function App() {
 
                       <div className="rounded-[10px] rounded-[10px] bg-gradient-to-b from-[#d6b54b] to-[#8f6f1d] p-[5px] shadow-[0_8px_30px_rgba(0,0,0,0.35)] p-2 shadow-[inset_0_0_0_2px_rgba(140,90,10,0.35)]">
                         <div className="text-black text-center text-[22px] font-black">
-                          下局
+                          NEXT
                         </div>
 
                         <div className="text-black text-center text-[22px] font-black">
-                          預告
+                          PRED
                         </div>
 
                         <div className="mt-2 flex items-center justify-center gap-2">
                           <div className="grid h-10 w-10 place-items-center rounded-full bg-[#b90b0b] text-[18px] font-black text-white">
-                            莊
+                            B
                           </div>
 
                           <div className="grid h-10 w-10 place-items-center rounded-full bg-[#1a49c8] text-[18px] font-black text-white">
-                            閒
+                            P
                           </div>
                         </div>
 
@@ -235,9 +431,6 @@ export default function App() {
                             </div>
                           </div>
                         </div>
-                      </div>
-                      <div>
-                        {/* <input value={} onChange={}/> */}
                       </div>
                     </div>
 
