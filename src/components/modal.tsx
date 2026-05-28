@@ -243,7 +243,11 @@ export default function CasinoSettingsModal({
         {/* FOOTER */}
         <div className="flex justify-center gap-6 px-5 py-3 border-t bg-white">
           <button
-            onClick={() => setSettings(initialSettings)}
+            onClick={() => {
+              setSettings(initialSettings)
+              onConfirm(initialSettings)
+              onClose()
+            }}
             className="px-8 py-2 bg-blue-900 text-white rounded"
           >
             Recovery

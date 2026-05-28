@@ -7,7 +7,7 @@ import playerpairlogo from "./assets/playerpair.png"
 import bankerpairlogo from "./assets/bankerpair.png"
 import super6logo from "./assets/super6.png"
 
-const KEYWORD = "88";
+const KEYWORD = "88Enter";
 
 const initialSettings = {
   language: "English",
@@ -104,20 +104,23 @@ export default function App() {
     }) as const
 
   const HeaderBetChip = ({
-    label,
-    bg,
-    text = "MIN/MAX: 2,000 / 20,000",
+    chips,
+    text,
   }: {
-    label: string
-    bg: string
-    text?: string
+    chips: { label?: React.ReactNode; bg: string; isCircle?: boolean }[]
+    text: string
   }) => (
     <div className="flex items-center gap-2 whitespace-nowrap text-[13px] font-black tracking-wider text-[#ffe7a8]">
-      <div
-        className="grid h-5 w-5 place-items-center rounded-[4px] text-[12px] text-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.35)]"
-        style={{ backgroundColor: bg }}
-      >
-        {label}
+      <div className="flex gap-1">
+        {chips.map((c, i) => (
+          <div
+            key={i}
+            className={`grid h-5 w-5 place-items-center text-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.35)] overflow-hidden ${c.isCircle ? 'rounded-full' : 'rounded-[4px] text-[12px]'}`}
+            style={{ backgroundColor: c.bg }}
+          >
+            {c.label}
+          </div>
+        ))}
       </div>
       <div className="opacity-95">{text}</div>
     </div>
@@ -153,55 +156,51 @@ export default function App() {
       case "banker":
         return (
           <div
-            className="grid place-items-center rounded-full bg-[#b90b0b] font-black shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]"
-            style={{ width: size, height: size, fontSize: 20 }}
+            className="grid place-items-center rounded-full bg-[#b90b0b] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)] overflow-hidden"
+            style={{ width: size, height: size }}
           >
-            B
+            <img src={bankerLogo} alt="B" className="w-full h-full object-cover" />
           </div>
         )
       case "player":
         return (
           <div
-            className="grid place-items-center rounded-full bg-[#1a49c8] font-black shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]"
-            style={{ width: size, height: size, fontSize: 20 }}
+            className="grid place-items-center rounded-full bg-[#1a49c8] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)] overflow-hidden"
+            style={{ width: size, height: size }}
           >
-            P
+            <img src={playerLogo} alt="P" className="w-full h-full object-cover" />
           </div>
         )
       case "tie":
         return (
           <div
-            className="grid place-items-center rounded-full bg-[#1f7a44] font-black shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]"
-            style={{ width: size, height: size, fontSize: 20 }}
+            className="grid place-items-center rounded-full bg-[#1f7a44] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)] overflow-hidden"
+            style={{ width: size, height: size }}
           >
-            T
+            <img src={tieLogo} alt="T" className="w-full h-full object-cover" />
           </div>
         )
       case "bankerPair":
         return (
           <div
-            className="grid place-items-center rounded-full border-[3px] border-[#b90b0b] bg-white font-black text-[#b90b0b] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]"
-            style={{ width: size, height: size, fontSize: 14 }}
-          >
-            BP
-          </div>
+            className="grid place-items-center rounded-full bg-[#f7e7b4]"
+            style={{ width: size, height: size }}
+          />
         )
       case "playerPair":
         return (
           <div
-            className="grid place-items-center rounded-full border-[3px] border-[#1a49c8] bg-white font-black text-[#1a49c8] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]"
-            style={{ width: size, height: size, fontSize: 14 }}
-          >
-            PP
-          </div>
+            className="grid place-items-center rounded-full bg-[#f7e7b4]"
+            style={{ width: size, height: size }}
+          />
         )
       case "super6":
         return (
           <div
-            className="grid place-items-center rounded-full bg-[#f7e7b4] font-black text-black shadow-[inset_0_0_0_2px_rgba(0,0,0,0.2)]"
-            style={{ width: size, height: size, fontSize: 14 }}
+            className="grid place-items-center rounded-full bg-[#f7e7b4] shadow-[inset_0_0_0_2px_rgba(0,0,0,0.2)] overflow-hidden"
+            style={{ width: size, height: size }}
           >
-            S6
+            <img src={super6logo} alt="S6" className="w-full h-full object-cover" />
           </div>
         )
     }
@@ -344,12 +343,12 @@ export default function App() {
 
   const beadLabel = (bead: Bead) => {
     switch (bead) {
-      case "banker": return { label: "BANKER", letter: "B", bg: "#b90b0b", key: "1" }
-      case "player": return { label: "PLAYER", letter: "P", bg: "#1a49c8", key: "2" }
-      case "tie": return { label: "TIE", letter: "T", bg: "#1f7a44", key: "3" }
-      case "bankerPair": return { label: "BANKER PAIR", letter: "BP", bg: "#b90b0b", key: "4" }
-      case "playerPair": return { label: "PLAYER PAIR", letter: "PP", bg: "#1a49c8", key: "5" }
-      case "super6": return { label: "SUPER 6", letter: "S6", bg: "#c8a200", key: "6" }
+      case "banker": return { label: "BANKER", logo: bankerLogo, bg: "#b90b0b", key: "1" }
+      case "player": return { label: "PLAYER", logo: playerLogo, bg: "#1a49c8", key: "2" }
+      case "tie": return { label: "TIE", logo: tieLogo, bg: "#1f7a44", key: "3" }
+      case "bankerPair": return { label: "BANKER PAIR", logo: null, bg: "#f7e7b4", key: "4" }
+      case "playerPair": return { label: "PLAYER PAIR", logo: null, bg: "#f7e7b4", key: "5" }
+      case "super6": return { label: "SUPER 6", logo: super6logo, bg: "#f7e7b4", key: "6" }
     }
   }
 
@@ -372,16 +371,15 @@ export default function App() {
                 className="absolute -top-px -left-px -right-px -bottom-px rounded-[20px] pointer-events-none"
               />
               <div
-                className="grid place-items-center rounded-full font-black text-white shadow-[0_4px_30px_rgba(0,0,0,0.5)]"
+                className="grid place-items-center rounded-full shadow-[0_4px_30px_rgba(0,0,0,0.5)] overflow-hidden"
                 style={{
                   width: 210,
                   height: 210,
-                  fontSize: 38,
                   background: info.bg,
                   boxShadow: `inset 0 0 0 6px rgba(255,255,255,0.35), 0 6px 30px ${info.bg}99`,
                 }}
               >
-                {info.letter}
+                {info.logo && <img src={info.logo} alt={info.label} className="w-full h-full object-cover" />}
               </div>
 
               <div className="text-[28px] font-black tracking-[0.18em] text-white">
@@ -411,32 +409,25 @@ export default function App() {
 
                 <div className="flex items-center gap-5">
                   <HeaderBetChip
-                    label="B"
-                    bg="#b90b0b"
+                    chips={[
+                      { label: <img src={bankerLogo} alt="B" className="w-full h-full object-cover" />, bg: "#b90b0b", isCircle: true },
+                      { label: <img src={playerLogo} alt="P" className="w-full h-full object-cover" />, bg: "#1a49c8", isCircle: true }
+                    ]}
                     text={`MIN/MAX: ${casinoSettings.bpMin} / ${casinoSettings.bpMax}`}
                   />
 
                   <HeaderBetChip
-                    label="P"
-                    bg="#1a49c8"
-                    text={`MIN/MAX: ${casinoSettings.bpMin} / ${casinoSettings.bpMax}`}
-                  />
-
-                  <HeaderBetChip
-                    label="T"
-                    bg="#1f7a44"
+                    chips={[{ label: <img src={tieLogo} alt="T" className="w-full h-full object-cover" />, bg: "#1f7a44", isCircle: true }]}
                     text={`MIN/MAX: ${casinoSettings.tieMin} / ${casinoSettings.tieMax}`}
                   />
 
                   <HeaderBetChip
-                    label="●"
-                    bg="#d6b54b"
+                    chips={[{ bg: "#d6b54b", isCircle: true }]}
                     text={`PAIR: ${casinoSettings.pairMin} / ${casinoSettings.pairMax}`}
                   />
 
                   <HeaderBetChip
-                    label="6"
-                    bg="#7a0000"
+                    chips={[{ label: <img src={super6logo} alt="6" className="w-full h-full object-cover" />, bg: "#7a0000", isCircle: true }]}
                     text={`SUPER6: ${casinoSettings.super6Min} / ${casinoSettings.super6Max}`}
                   />
                 </div>
