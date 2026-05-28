@@ -79,6 +79,16 @@ export default function App() {
         bufferRef.current = "";
       }
 
+      if (bufferRef.current === "77Enter") {
+        try {
+          const savedBeads = localStorage.getItem("baccarat_beads")
+          if (savedBeads) setBeads(JSON.parse(savedBeads))
+          const savedShoe = localStorage.getItem("baccarat_shoe")
+          if (savedShoe) setShoeNumber(Number(savedShoe))
+        } catch {}
+        bufferRef.current = "";
+      }
+
       // Reset after inactivity
       clearTimeout(timerRef.current);
 
@@ -206,21 +216,17 @@ export default function App() {
     }
   }
 
-  // const [beads, setBeads] = useState<Bead[]>([])
-  const [beads, setBeads] = useState<Bead[]>(() => {
-    try {
-      const saved = localStorage.getItem("baccarat_beads")
-      return saved ? JSON.parse(saved) : []
-    } catch {
-      return []
-    }
-  })
+  const [beads, _setBeads] = useState<Bead[]>([])
 
-  useEffect(() => {
-    try {
-      localStorage.setItem("baccarat_beads", JSON.stringify(beads))
-    } catch { }
-  }, [beads])
+  const setBeads = (val: Bead[] | ((prev: Bead[]) => Bead[])) => {
+    _setBeads(prev => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      try {
+        localStorage.setItem("baccarat_beads", JSON.stringify(next))
+      } catch { }
+      return next;
+    })
+  }
 
   // Pending bead awaiting confirmation
   const [pendingBead, setPendingBead] = useState<Bead | null>(null)
@@ -251,19 +257,17 @@ export default function App() {
   const totalCount = beads.length
 
 
-  const [shoeNumber, setShoeNumber] = useState(() => {
-    try {
-      return Number(localStorage.getItem("baccarat_shoe")) || 1
-    } catch {
-      return 1
-    }
-  })
+  const [shoeNumber, _setShoeNumber] = useState(1)
 
-  useEffect(() => {
-    try {
-      localStorage.setItem("baccarat_shoe", String(shoeNumber))
-    } catch { }
-  }, [shoeNumber])
+  const setShoeNumber = (val: number | ((prev: number) => number)) => {
+    _setShoeNumber(prev => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      try {
+        localStorage.setItem("baccarat_shoe", String(next))
+      } catch { }
+      return next;
+    })
+  }
 
 
 
