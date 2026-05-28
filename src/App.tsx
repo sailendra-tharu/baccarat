@@ -1,5 +1,11 @@
 import { useEffect, useState, useRef } from "react"
 import CasinoSettingsModal from "./components/modal";
+import tieLogo from "./assets/tie.png";
+import playerLogo from "./assets/player.png";
+import bankerLogo from "./assets/banker.png";
+import playerpairlogo from "./assets/playerpair.png"
+import bankerpairlogo from "./assets/bankerpair.png"
+import super6logo from "./assets/super6.png"
 
 const KEYWORD = "88";
 
@@ -217,10 +223,23 @@ export default function App() {
     } catch { }
   }, [beads])
 
+  // Pending bead awaiting confirmation
+  const [pendingBead, setPendingBead] = useState<Bead | null>(null)
+
   const addBeadByKey = (key: number) => {
     const bead = beadForKey(key)
     if (!bead) return
-    setBeads((prev) => [...prev, bead])
+    setPendingBead(bead)
+  }
+
+  const confirmPendingBead = () => {
+    if (!pendingBead) return
+    setBeads((prev) => [...prev, pendingBead])
+    setPendingBead(null)
+  }
+
+  const cancelPendingBead = () => {
+    setPendingBead(null)
   }
 
   const bankerCount = beads.filter(b => b === "banker").length
@@ -270,11 +289,21 @@ export default function App() {
 
       if (isHeaderEditing) return
 
+      // If a pending bead modal is open, handle Enter/Escape
+      if (pendingBead !== null) {
+        if (e.key === "Enter") {
+          confirmPendingBead()
+        } else if (e.key === "Escape") {
+          cancelPendingBead()
+        }
+        return
+      }
+
       if (e.key >= "1" && e.key <= "6") {
         addBeadByKey(Number(e.key))
       } else if (e.key === "Backspace") {
         setBeads((prev) => prev.slice(0, -1))
-      } else if (e.key === "Escape") {
+      } else if (e.key === "Escape" || e.key === "0") {
         setBeads([])
         setShoeNumber(prev => prev + 1)
       }
@@ -283,7 +312,7 @@ export default function App() {
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [isHeaderEditing])
+  }, [isHeaderEditing, pendingBead])
 
   const RoadBeads = ({ cell }: { cell: number }) => {
     const pad = Math.max(6, Math.floor(cell * 0.18))
@@ -313,8 +342,56 @@ export default function App() {
     )
   }
 
+  const beadLabel = (bead: Bead) => {
+    switch (bead) {
+      case "banker": return { label: "BANKER", letter: "B", bg: "#b90b0b", key: "1" }
+      case "player": return { label: "PLAYER", letter: "P", bg: "#1a49c8", key: "2" }
+      case "tie": return { label: "TIE", letter: "T", bg: "#1f7a44", key: "3" }
+      case "bankerPair": return { label: "BANKER PAIR", letter: "BP", bg: "#b90b0b", key: "4" }
+      case "playerPair": return { label: "PLAYER PAIR", letter: "PP", bg: "#1a49c8", key: "5" }
+      case "super6": return { label: "SUPER 6", letter: "S6", bg: "#c8a200", key: "6" }
+    }
+  }
+
   return (
     <div className="h-screen overflow-hidden text-white">
+
+      {/* Pending Bead Confirmation Modal */}
+      {pendingBead && (() => {
+        const info = beadLabel(pendingBead)
+        return (
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center"
+            style={{ background: "rgba(0,0,0,0.72)" }}
+          >
+            <div
+              className="relative flex flex-col items-center gap-6 rounded-[20px] px-12 py-10"
+
+            >
+              <div
+                className="absolute -top-px -left-px -right-px -bottom-px rounded-[20px] pointer-events-none"
+              />
+              <div
+                className="grid place-items-center rounded-full font-black text-white shadow-[0_4px_30px_rgba(0,0,0,0.5)]"
+                style={{
+                  width: 210,
+                  height: 210,
+                  fontSize: 38,
+                  background: info.bg,
+                  boxShadow: `inset 0 0 0 6px rgba(255,255,255,0.35), 0 6px 30px ${info.bg}99`,
+                }}
+              >
+                {info.letter}
+              </div>
+
+              <div className="text-[28px] font-black tracking-[0.18em] text-white">
+                {info.label}
+              </div>
+
+            </div>
+          </div>
+        )
+      })()}
       <div className="mx-auto w-full max-w-[1920px] rounded-[12px] bg-[#7a0000] shadow-[0_20px_70px_rgba(0,0,0,0.45)]">
 
         {/* Scroll container */}
@@ -328,7 +405,7 @@ export default function App() {
               <div className="relative flex items-center justify-between gap-4 bg-blue-800 px-4">
                 <div className="flex items-center gap-3">
                   <div className="text-[26px] font-black tracking-wide text-[#ffd25c] drop-shadow-[0_2px_0_rgba(0,0,0,0.35)]">
-                    Welcome to Baccarate 
+                    Welcome to Baccarat
                   </div>
                 </div>
 
@@ -433,20 +510,20 @@ export default function App() {
 
                           <div className="grid grid-cols-[auto_1fr_auto] gap-x-3 gap-y-2 text-[24px] font-black tracking-widest">
 
-                            <div className="grid h-10 w-10 place-items-center rounded-full bg-[#b90b0b] text-white">
-                              B
+                            <div className="grid h-8 w-8 place-items-center rounded-full bg-[#b90b0b] text-white">
+                              <img src={bankerLogo} alt="banker" className="w-full h-full object-cover" />
                             </div>
                             <div className="self-center">BANKER</div>
                             <div className="self-center text-right">{bankerCount}</div>
 
-                            <div className="grid h-10 w-10 place-items-center rounded-full bg-[#1a49c8] text-white">
-                              P
+                            <div className="grid h-8 w-8 place-items-center rounded-full bg-[#1a49c8] text-white">
+                              <img src={playerLogo} alt="player" className="w-full h-full object-cover" />
                             </div>
                             <div className="self-center">PLAYER</div>
                             <div className="self-center text-right">{playerCount}</div>
 
-                            <div className="grid h-10 w-10 place-items-center rounded-full bg-[#1f7a44] text-white">
-                              T
+                            <div className="grid h-8 w-8 place-items-center rounded-full bg-[#1f7a44] text-white">
+                              <img src={tieLogo} alt="tie" className="w-full h-full object-cover" />
                             </div>
                             <div className="self-center">TIE</div>
                             <div className="self-center text-right">{tieCount}</div>
@@ -457,20 +534,23 @@ export default function App() {
                             <div className="text-[18px] font-black tracking-wider">
 
                               <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-                                <div className="h-6 w-6 rounded-full bg-[#f7e7b4] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.18)]" />
+                                <div className="h-6 w-6 rounded-full bg-[#f7e7b4] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.18)]" >
+                                  <img src={bankerpairlogo} alt="banker pair" className="w-full h-full object-cover" />
+                                </div>
                                 <div>BANKER PAIR</div>
                                 <div className="text-right">{bankerPairCount}</div>
                               </div>
 
                               <div className="mt-1 grid grid-cols-[auto_1fr_auto] items-center gap-2">
-                                <div className="h-6 w-6 rounded-full bg-[#f7e7b4] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.18)]" />
-                                <div>PLAYER PAIR</div>
+                                <div className="h-6 w-6 rounded-full bg-[#f7e7b4] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.18)]" >
+                                  <img src={playerpairlogo} alt="banker pair" className="w-full h-full object-cover" />
+                                </div>                                <div>PLAYER PAIR</div>
                                 <div className="text-right">{playerPairCount}</div>
                               </div>
 
                               <div className="mt-1 grid grid-cols-[auto_1fr_auto] items-center gap-2">
-                                <div className="grid h-6 w-6 place-items-center rounded-full bg-[#f7e7b4] text-[12px] font-black shadow-[inset_0_0_0_1px_rgba(0,0,0,0.18)]">
-                                  6
+                                <div className="h-6 w-6 rounded-md bg-[#f7e7b4] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.18)]" >
+                                  <img src={super6logo} alt="banker pair" className="w-full h-full object-cover" />
                                 </div>
                                 <div>SUPER6</div>
                                 <div className="text-right">{super6Count}</div>
@@ -495,12 +575,12 @@ export default function App() {
                         </div>
 
                         <div className="mt-2 flex items-center justify-center gap-2">
-                          <div className="grid h-10 w-10 place-items-center rounded-full bg-[#b90b0b] text-[18px] font-black text-white">
-                            B
+                          <div className="grid h-8 w-8 place-items-center rounded-full bg-[#b90b0b] text-white overflow-hidden">
+                            <img src={bankerLogo} alt="banker" className="w-full h-full object-cover" />
                           </div>
 
-                          <div className="grid h-10 w-10 place-items-center rounded-full bg-[#1a49c8] text-[18px] font-black text-white">
-                            P
+                          <div className="grid h-8 w-8 place-items-center rounded-full bg-[#1a49c8] text-white overflow-hidden">
+                            <img src={playerLogo} alt="player" className="w-full h-full object-cover" />
                           </div>
                         </div>
 
@@ -533,10 +613,6 @@ export default function App() {
                     </div>
 
                     <div>
-                      <h1 className="text-white text-3xl">
-                        Casino Application
-                      </h1>
-
                       <CasinoSettingsModal
                         open={open}
                         settings={casinoSettings}

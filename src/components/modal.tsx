@@ -74,10 +74,9 @@ function Input({
       className={`
         flex-1 min-w-0 px-1.5 py-0.5 rounded-sm text-[13px] border outline-none
         font-serif transition-all
-        ${
-          highlight
-            ? "bg-blue-700 text-white border-blue-700"
-            : "bg-white/90 text-amber-950 border-yellow-800"
+        ${highlight
+          ? "bg-blue-700 text-white border-blue-700"
+          : "bg-white/90 text-amber-950 border-yellow-800"
         }
         ${className}
       `}
@@ -132,7 +131,7 @@ export default function CasinoSettingsModal({
   }
 
   return (
-    <div  className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5">
       <div className="relative w-full max-w-2xl rounded-sm overflow-hidden border-10 border-blue-900 bg-blue-900">
 
         {/* HEADER */}
@@ -142,7 +141,7 @@ export default function CasinoSettingsModal({
           </h1>
         </div>
 
-        <div className="border border-blue-900"></div>
+        <div className="border  border-4 border-x border-blue-900"></div>
 
         {/* BODY */}
         <div className="px-5 py-4 grid grid-cols-2 gap-x-6 bg-white">
