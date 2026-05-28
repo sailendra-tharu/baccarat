@@ -1,6 +1,95 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
+import CasinoSettingsModal from "./components/modal";
+
+const KEYWORD = "88";
+
+const initialSettings = {
+  language: "English",
+  shoeNo: "1",
+  bpMin: 2000,
+  tieMin: 2000,
+  pairMin: 2000,
+  super6Min: 1000,
+  music: "开",
+  tableNo: "A18",
+  threeStar: "开",
+  annou: "Welcome To The Raadshah Casino",
+  timer: 30,
+  bpMax: 20000,
+  tieMax: 20000,
+  pairMax: 20000,
+  super6Max: 10000,
+  audio: "开",
+  chipType: "RAM",
+  logo: "开",
+};
 
 export default function App() {
+
+
+  const [casinoSettings, setCasinoSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem("casino_settings")
+      return saved ? JSON.parse(saved) : initialSettings
+    } catch {
+      return initialSettings
+    }
+  })
+  useEffect(() => {
+    localStorage.setItem(
+      "casino_settings",
+      JSON.stringify(casinoSettings)
+    )
+  }, [casinoSettings])
+
+  const [open, setOpen] = useState(false);
+
+  const bufferRef = useRef("");
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ignore typing inside inputs
+      const tag = document.activeElement?.tagName?.toLowerCase();
+
+      if (
+        tag === "input" ||
+        tag === "textarea" ||
+        tag === "select"
+      ) {
+        return;
+      }
+
+      bufferRef.current += e.key;
+
+      // Keep only latest chars
+      if (bufferRef.current.length > KEYWORD.length) {
+        bufferRef.current = bufferRef.current.slice(-KEYWORD.length);
+      }
+
+      // Open modal when "88" typed
+      if (bufferRef.current === KEYWORD) {
+        setOpen(true);
+        bufferRef.current = "";
+      }
+
+      // Reset after inactivity
+      clearTimeout(timerRef.current);
+
+      timerRef.current = setTimeout(() => {
+        bufferRef.current = "";
+      }, 1500);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      clearTimeout(timerRef.current);
+    };
+  }, []);
+
+
   const gridBg = (cell: number, line: string) =>
     ({
       backgroundImage: `linear-gradient(${line} 1px, transparent 1px), linear-gradient(90deg, ${line} 1px, transparent 1px)`,
@@ -29,15 +118,8 @@ export default function App() {
   )
 
   const [isHeaderEditing, setIsHeaderEditing] = useState(false)
-  const [headerTitle, setHeaderTitle] = useState("Welcome to Baccarat")
-  const [headerLines, setHeaderLines] = useState({
-    banker: "MIN/MAX: 2,000 / 20,000",
-    player: "MIN/MAX: 2,000 / 20,000",
-    tie: "MIN/MAX: 2,000 / 20,000",
-    pair: "PAIR: 2,000 / 20,000",
-    super6: "SUPER6: 2,000 / 20,000",
-  })
 
+  // Add these two useEffects (after the existing ones):
   type Bead = "banker" | "player" | "tie" | "bankerPair" | "playerPair" | "super6"
 
   const beadForKey = (key: number): Bead | null => {
@@ -68,7 +150,7 @@ export default function App() {
             className="grid place-items-center rounded-full bg-[#b90b0b] font-black shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]"
             style={{ width: size, height: size, fontSize: 20 }}
           >
-            莊
+            B
           </div>
         )
       case "player":
@@ -77,7 +159,7 @@ export default function App() {
             className="grid place-items-center rounded-full bg-[#1a49c8] font-black shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]"
             style={{ width: size, height: size, fontSize: 20 }}
           >
-            閒
+            P
           </div>
         )
       case "tie":
@@ -86,7 +168,7 @@ export default function App() {
             className="grid place-items-center rounded-full bg-[#1f7a44] font-black shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]"
             style={{ width: size, height: size, fontSize: 20 }}
           >
-            和
+            T
           </div>
         )
       case "bankerPair":
@@ -95,7 +177,7 @@ export default function App() {
             className="grid place-items-center rounded-full border-[3px] border-[#b90b0b] bg-white font-black text-[#b90b0b] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]"
             style={{ width: size, height: size, fontSize: 14 }}
           >
-            B
+            BP
           </div>
         )
       case "playerPair":
@@ -104,7 +186,7 @@ export default function App() {
             className="grid place-items-center rounded-full border-[3px] border-[#1a49c8] bg-white font-black text-[#1a49c8] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)]"
             style={{ width: size, height: size, fontSize: 14 }}
           >
-            P
+            PP
           </div>
         )
       case "super6":
@@ -113,19 +195,59 @@ export default function App() {
             className="grid place-items-center rounded-full bg-[#f7e7b4] font-black text-black shadow-[inset_0_0_0_2px_rgba(0,0,0,0.2)]"
             style={{ width: size, height: size, fontSize: 14 }}
           >
-            6
+            S6
           </div>
         )
     }
   }
 
-  const [beads, setBeads] = useState<Bead[]>([])
+  // const [beads, setBeads] = useState<Bead[]>([])
+  const [beads, setBeads] = useState<Bead[]>(() => {
+    try {
+      const saved = localStorage.getItem("baccarat_beads")
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("baccarat_beads", JSON.stringify(beads))
+    } catch { }
+  }, [beads])
 
   const addBeadByKey = (key: number) => {
     const bead = beadForKey(key)
     if (!bead) return
     setBeads((prev) => [...prev, bead])
   }
+
+  const bankerCount = beads.filter(b => b === "banker").length
+  const playerCount = beads.filter(b => b === "player").length
+  const tieCount = beads.filter(b => b === "tie").length
+  const bankerPairCount = beads.filter(b => b === "bankerPair").length
+  const playerPairCount = beads.filter(b => b === "playerPair").length
+  const super6Count = beads.filter(b => b === "super6").length
+
+  const totalCount = beads.length
+
+
+  const [shoeNumber, setShoeNumber] = useState(() => {
+    try {
+      return Number(localStorage.getItem("baccarat_shoe")) || 1
+    } catch {
+      return 1
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("baccarat_shoe", String(shoeNumber))
+    } catch { }
+  }, [shoeNumber])
+
+
 
   useEffect(() => {
     let last8At = 0
@@ -154,7 +276,9 @@ export default function App() {
         setBeads((prev) => prev.slice(0, -1))
       } else if (e.key === "Escape") {
         setBeads([])
+        setShoeNumber(prev => prev + 1)
       }
+
     }
 
     window.addEventListener("keydown", onKeyDown)
@@ -165,7 +289,7 @@ export default function App() {
     const pad = Math.max(6, Math.floor(cell * 0.18))
     const beadBox = Math.max(12, Math.min(30, cell - pad * 2))
     return (
-      <div className="absolute inset-0 p-[6px]">
+      <div className="absolute inset-0">
         <div
           className="grid h-full w-full content-start justify-start gap-0"
           style={{
@@ -204,74 +328,43 @@ export default function App() {
               <div className="relative flex items-center justify-between gap-4 bg-blue-800 px-4">
                 <div className="flex items-center gap-3">
                   <div className="text-[26px] font-black tracking-wide text-[#ffd25c] drop-shadow-[0_2px_0_rgba(0,0,0,0.35)]">
-                    {headerTitle}
+                    Welcome to Baccarate 
                   </div>
                 </div>
 
                 <div className="flex items-center gap-5">
-                  <HeaderBetChip label="B" bg="#b90b0b" text={headerLines.banker} />
-                  <HeaderBetChip label="P" bg="#1a49c8" text={headerLines.player} />
-                  <HeaderBetChip label="T" bg="#1f7a44" text={headerLines.tie} />
-                  <HeaderBetChip label="●" bg="#d6b54b" text={headerLines.pair} />
-                  <HeaderBetChip label="6" bg="#7a0000" text={headerLines.super6} />
+                  <HeaderBetChip
+                    label="B"
+                    bg="#b90b0b"
+                    text={`MIN/MAX: ${casinoSettings.bpMin} / ${casinoSettings.bpMax}`}
+                  />
+
+                  <HeaderBetChip
+                    label="P"
+                    bg="#1a49c8"
+                    text={`MIN/MAX: ${casinoSettings.bpMin} / ${casinoSettings.bpMax}`}
+                  />
+
+                  <HeaderBetChip
+                    label="T"
+                    bg="#1f7a44"
+                    text={`MIN/MAX: ${casinoSettings.tieMin} / ${casinoSettings.tieMax}`}
+                  />
+
+                  <HeaderBetChip
+                    label="●"
+                    bg="#d6b54b"
+                    text={`PAIR: ${casinoSettings.pairMin} / ${casinoSettings.pairMax}`}
+                  />
+
+                  <HeaderBetChip
+                    label="6"
+                    bg="#7a0000"
+                    text={`SUPER6: ${casinoSettings.super6Min} / ${casinoSettings.super6Max}`}
+                  />
                 </div>
 
-                {isHeaderEditing ? (
-                  <div className="absolute left-0 top-full z-20 w-full bg-blue-950/95 px-4 py-3 shadow-[0_16px_40px_rgba(0,0,0,0.45)] backdrop-blur">
-                    <div className="mb-2 flex items-center justify-between">
-                      <div className="text-[13px] font-black tracking-widest text-[#ffe7a8]">
-                        Header Edit (press 88 to close)
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setIsHeaderEditing(false)}
-                        className="rounded-[10px] bg-white/10 px-3 py-1 text-[12px] font-black text-white hover:bg-white/15"
-                      >
-                        Close
-                      </button>
-                    </div>
 
-                    <div className="grid grid-cols-6 gap-2">
-                      <input
-                        value={headerTitle}
-                        onChange={(e) => setHeaderTitle(e.target.value)}
-                        className="col-span-2 h-10 rounded-[10px] bg-white px-3 text-[14px] font-black text-black outline-none"
-                        placeholder="Title"
-                      />
-
-                      <input
-                        value={headerLines.banker}
-                        onChange={(e) => setHeaderLines((p) => ({ ...p, banker: e.target.value }))}
-                        className="h-10 rounded-[10px] bg-white px-3 text-[12px] font-black text-black outline-none"
-                        placeholder="B text"
-                      />
-                      <input
-                        value={headerLines.player}
-                        onChange={(e) => setHeaderLines((p) => ({ ...p, player: e.target.value }))}
-                        className="h-10 rounded-[10px] bg-white px-3 text-[12px] font-black text-black outline-none"
-                        placeholder="P text"
-                      />
-                      <input
-                        value={headerLines.tie}
-                        onChange={(e) => setHeaderLines((p) => ({ ...p, tie: e.target.value }))}
-                        className="h-10 rounded-[10px] bg-white px-3 text-[12px] font-black text-black outline-none"
-                        placeholder="T text"
-                      />
-                      <input
-                        value={headerLines.pair}
-                        onChange={(e) => setHeaderLines((p) => ({ ...p, pair: e.target.value }))}
-                        className="h-10 rounded-[10px] bg-white px-3 text-[12px] font-black text-black outline-none"
-                        placeholder="PAIR text"
-                      />
-                      <input
-                        value={headerLines.super6}
-                        onChange={(e) => setHeaderLines((p) => ({ ...p, super6: e.target.value }))}
-                        className="h-10 rounded-[10px] bg-white px-3 text-[12px] font-black text-black outline-none"
-                        placeholder="SUPER6 text"
-                      />
-                    </div>
-                  </div>
-                ) : null}
               </div>
 
               {/* Board */}
@@ -341,22 +434,22 @@ export default function App() {
                           <div className="grid grid-cols-[auto_1fr_auto] gap-x-3 gap-y-2 text-[24px] font-black tracking-widest">
 
                             <div className="grid h-10 w-10 place-items-center rounded-full bg-[#b90b0b] text-white">
-                             B
+                              B
                             </div>
                             <div className="self-center">BANKER</div>
-                            <div className="self-center text-right">3</div>
+                            <div className="self-center text-right">{bankerCount}</div>
 
                             <div className="grid h-10 w-10 place-items-center rounded-full bg-[#1a49c8] text-white">
                               P
                             </div>
                             <div className="self-center">PLAYER</div>
-                            <div className="self-center text-right">1</div>
+                            <div className="self-center text-right">{playerCount}</div>
 
                             <div className="grid h-10 w-10 place-items-center rounded-full bg-[#1f7a44] text-white">
                               T
                             </div>
                             <div className="self-center">TIE</div>
-                            <div className="self-center text-right">0</div>
+                            <div className="self-center text-right">{tieCount}</div>
                           </div>
 
                           <div className="grid grid-cols-[1fr_auto] items-end gap-3">
@@ -366,13 +459,13 @@ export default function App() {
                               <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
                                 <div className="h-6 w-6 rounded-full bg-[#f7e7b4] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.18)]" />
                                 <div>BANKER PAIR</div>
-                                <div className="text-right">0</div>
+                                <div className="text-right">{bankerPairCount}</div>
                               </div>
 
                               <div className="mt-1 grid grid-cols-[auto_1fr_auto] items-center gap-2">
                                 <div className="h-6 w-6 rounded-full bg-[#f7e7b4] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.18)]" />
                                 <div>PLAYER PAIR</div>
-                                <div className="text-right">0</div>
+                                <div className="text-right">{playerPairCount}</div>
                               </div>
 
                               <div className="mt-1 grid grid-cols-[auto_1fr_auto] items-center gap-2">
@@ -380,7 +473,12 @@ export default function App() {
                                   6
                                 </div>
                                 <div>SUPER6</div>
-                                <div className="text-right">1</div>
+                                <div className="text-right">{super6Count}</div>
+                              </div>
+                              <div className="border border-x border-yellow-400 mt-3"></div>
+                              <div className="flex justify-between mt-1">
+                                <div className="text-[18px] font-black tracking-wider">Shoe:{shoeNumber}</div>
+                                <div className="text-[18px] font-black tracking-wider">Game:{totalCount}</div>
                               </div>
                             </div>
                           </div>
@@ -432,6 +530,21 @@ export default function App() {
                           </div>
                         </div>
                       </div>
+                    </div>
+
+                    <div>
+                      <h1 className="text-white text-3xl">
+                        Casino Application
+                      </h1>
+
+                      <CasinoSettingsModal
+                        open={open}
+                        settings={casinoSettings}
+                        setSettings={setCasinoSettings}
+                        onClose={() => setOpen(false)}
+                        onConfirm={(data) => console.log("confirmed:", data)}
+                        initialSettings={initialSettings}
+                      />
                     </div>
 
                   </div>
