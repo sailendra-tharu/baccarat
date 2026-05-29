@@ -85,7 +85,7 @@ export default function App() {
           if (savedBeads) setBeads(JSON.parse(savedBeads))
           const savedShoe = localStorage.getItem("baccarat_shoe")
           if (savedShoe) setShoeNumber(Number(savedShoe))
-        } catch {}
+        } catch { }
         bufferRef.current = "";
       }
 
@@ -192,7 +192,7 @@ export default function App() {
         )
       case "bankerPair":
         return (
-           <div
+          <div
             className="grid place-items-center rounded-full bg-[#1f7a44] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)] overflow-hidden"
             style={{ width: size, height: size }}
           >
@@ -201,7 +201,7 @@ export default function App() {
         )
       case "playerPair":
         return (
-           <div
+          <div
             className="grid place-items-center rounded-full bg-[#1f7a44] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)] overflow-hidden"
             style={{ width: size, height: size }}
           >
@@ -411,7 +411,7 @@ export default function App() {
               <div className="relative flex items-center justify-between gap-4 bg-blue-800 px-4">
                 <div className="flex items-center gap-3">
                   <div className="text-[26px] font-black tracking-wide text-[#ffd25c] drop-shadow-[0_2px_0_rgba(0,0,0,0.35)]">
-                    Welcome to Baccarat
+                    WELCOME TO BACCARAT
                   </div>
                 </div>
 
