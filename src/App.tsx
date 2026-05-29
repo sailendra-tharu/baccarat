@@ -51,10 +51,10 @@ export default function App() {
   const [open, setOpen] = useState(false);
 
   const bufferRef = useRef("");
-  const timerRef = useRef(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore typing inside inputs
       const tag = document.activeElement?.tagName?.toLowerCase();
 
@@ -92,7 +92,7 @@ export default function App() {
       // Reset after inactivity
       clearTimeout(timerRef.current);
 
-      timerRef.current = setTimeout(() => {
+      timerRef.current = window.setTimeout(() => {
         bufferRef.current = "";
       }, 1500);
     };
