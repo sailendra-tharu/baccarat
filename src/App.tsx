@@ -192,17 +192,21 @@ export default function App() {
         )
       case "bankerPair":
         return (
-          <div
-            className="grid place-items-center rounded-full bg-[#f7e7b4]"
+           <div
+            className="grid place-items-center rounded-full bg-[#1f7a44] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)] overflow-hidden"
             style={{ width: size, height: size }}
-          />
+          >
+            <img src={bankerpairlogo} alt="T" className="w-full h-full object-cover" />
+          </div>
         )
       case "playerPair":
         return (
-          <div
-            className="grid place-items-center rounded-full bg-[#f7e7b4]"
+           <div
+            className="grid place-items-center rounded-full bg-[#1f7a44] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)] overflow-hidden"
             style={{ width: size, height: size }}
-          />
+          >
+            <img src={playerpairlogo} alt="T" className="w-full h-full object-cover" />
+          </div>
         )
       case "super6":
         return (
@@ -350,8 +354,8 @@ export default function App() {
       case "banker": return { label: "BANKER", logo: bankerLogo, bg: "#b90b0b", key: "1" }
       case "player": return { label: "PLAYER", logo: playerLogo, bg: "#1a49c8", key: "2" }
       case "tie": return { label: "TIE", logo: tieLogo, bg: "#1f7a44", key: "3" }
-      case "bankerPair": return { label: "BANKER PAIR", logo: null, bg: "#f7e7b4", key: "4" }
-      case "playerPair": return { label: "PLAYER PAIR", logo: null, bg: "#f7e7b4", key: "5" }
+      case "bankerPair": return { label: "BANKER PAIR", logo: bankerpairlogo, key: "4" }
+      case "playerPair": return { label: "PLAYER PAIR", logo: playerpairlogo, key: "5" }
       case "super6": return { label: "SUPER 6", logo: super6logo, bg: "#f7e7b4", key: "6" }
     }
   }
