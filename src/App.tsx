@@ -6,6 +6,7 @@ import bankerLogo from "./assets/banker.png";
 import playerpairlogo from "./assets/playerpair.png"
 import bankerpairlogo from "./assets/bankerpair.png"
 import super6logo from "./assets/super6.png"
+import baccaratlogo from "./assets/baccarat.png"
 
 const KEYWORD = "88Enter";
 
@@ -85,7 +86,7 @@ export default function App() {
           if (savedBeads) setBeads(JSON.parse(savedBeads))
           const savedShoe = localStorage.getItem("baccarat_shoe")
           if (savedShoe) setShoeNumber(Number(savedShoe))
-        } catch {}
+        } catch { }
         bufferRef.current = "";
       }
 
@@ -135,8 +136,6 @@ export default function App() {
       <div className="opacity-95">{text}</div>
     </div>
   )
-
-  const [isHeaderEditing, setIsHeaderEditing] = useState(false)
 
   // Add these two useEffects (after the existing ones):
   type Bead = "banker" | "player" | "tie" | "bankerPair" | "playerPair" | "super6"
@@ -192,7 +191,7 @@ export default function App() {
         )
       case "bankerPair":
         return (
-           <div
+          <div
             className="grid place-items-center rounded-full bg-[#1f7a44] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)] overflow-hidden"
             style={{ width: size, height: size }}
           >
@@ -201,7 +200,7 @@ export default function App() {
         )
       case "playerPair":
         return (
-           <div
+          <div
             className="grid place-items-center rounded-full bg-[#1f7a44] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)] overflow-hidden"
             style={{ width: size, height: size }}
           >
@@ -276,25 +275,12 @@ export default function App() {
 
 
   useEffect(() => {
-    let last8At = 0
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null
       const tag = target?.tagName?.toLowerCase()
       const isTypingSurface =
         tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable
-      if (isTypingSurface) return
-
-      if (e.key === "8") {
-        const now = Date.now()
-        if (now - last8At <= 700) {
-          setIsHeaderEditing((v) => !v)
-          last8At = 0
-          return
-        }
-        last8At = now
-      }
-
-      if (isHeaderEditing) return
+      if (isTypingSurface || open) return
 
       // If a pending bead modal is open, handle Enter/Escape
       if (pendingBead !== null) {
@@ -319,7 +305,7 @@ export default function App() {
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [isHeaderEditing, pendingBead])
+  }, [open, pendingBead])
 
   const RoadBeads = ({ cell }: { cell: number }) => {
     const pad = Math.max(6, Math.floor(cell * 0.18))
@@ -329,8 +315,9 @@ export default function App() {
         <div
           className="grid h-full w-full content-start justify-start gap-0"
           style={{
-            gridTemplateColumns: `repeat(auto-fit, ${cell}px)`,
-            gridAutoRows: `${cell}px`,
+            gridTemplateRows: `repeat(auto-fill, ${cell}px)`,
+            gridAutoColumns: `${cell}px`,
+            gridAutoFlow: "column",
           }}
         >
           {beads.map((b, i) => (
@@ -356,7 +343,7 @@ export default function App() {
       case "tie": return { label: "TIE", logo: tieLogo, bg: "#1f7a44", key: "3" }
       case "bankerPair": return { label: "BANKER PAIR", logo: bankerpairlogo, key: "4" }
       case "playerPair": return { label: "PLAYER PAIR", logo: playerpairlogo, key: "5" }
-      case "super6": return { label: "SUPER 6", logo: super6logo, bg: "#f7e7b4", key: "6" }
+      case "super6": return { label: "SUPER 6", logo: super6logo, bg: "#b90b0b", key: "6" }
     }
   }
 
@@ -379,12 +366,10 @@ export default function App() {
                 className="absolute -top-px -left-px -right-px -bottom-px rounded-[20px] pointer-events-none"
               />
               <div
-                className="grid place-items-center rounded-full shadow-[0_4px_30px_rgba(0,0,0,0.5)] overflow-hidden"
+                className="grid place-items-center  overflow-hidden"
                 style={{
                   width: 210,
                   height: 210,
-                  background: info.bg,
-                  boxShadow: `inset 0 0 0 6px rgba(255,255,255,0.35), 0 6px 30px ${info.bg}99`,
                 }}
               >
                 {info.logo && <img src={info.logo} alt={info.label} className="w-full h-full object-cover" />}
@@ -543,14 +528,13 @@ export default function App() {
                               <div className="mt-1 grid grid-cols-[auto_1fr_auto] items-center gap-2">
                                 <div className="h-6 w-6 rounded-full bg-[#f7e7b4] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.18)]" >
                                   <img src={playerpairlogo} alt="banker pair" className="w-full h-full object-cover" />
-                                </div>                                <div>PLAYER PAIR</div>
+                                </div>
+                                <div>PLAYER PAIR</div>
                                 <div className="text-right">{playerPairCount}</div>
                               </div>
 
                               <div className="mt-1 grid grid-cols-[auto_1fr_auto] items-center gap-2">
-                                <div className="h-6 w-6 rounded-md bg-[#f7e7b4] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.18)]" >
-                                  <img src={super6logo} alt="banker pair" className="w-full h-full object-cover" />
-                                </div>
+                                <img src={super6logo} alt="banker pair" className="object-cover w-[30px] h-[30px]" />
                                 <div>SUPER6</div>
                                 <div className="text-right">{super6Count}</div>
                               </div>
@@ -595,7 +579,7 @@ export default function App() {
                         <div className="grid h-full place-items-center">
 
                           <div className="text-center">
-                            <div className="text-[44px] font-black tracking-widest text-[#ffd25c] drop-shadow-[0_2px_0_rgba(0,0,0,0.35)]">
+                            {/* <div className="text-[44px] font-black tracking-widest text-[#ffd25c] drop-shadow-[0_2px_0_rgba(0,0,0,0.35)]">
                               AMYLQ
                             </div>
 
@@ -605,7 +589,8 @@ export default function App() {
 
                             <div className="mt-1 text-[18px] font-bold tracking-[0.18em] text-[#ffe7a8]/90">
                               GONG PING GONG ZHENG
-                            </div>
+                            </div> */}
+                            <img src={baccaratlogo} width={300} height={300} />
                           </div>
                         </div>
                       </div>
