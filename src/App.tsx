@@ -7,6 +7,7 @@ import playerpairlogo from "./assets/playerpair.png"
 import bankerpairlogo from "./assets/bankerpair.png"
 import super6logo from "./assets/super6.png"
 import baccaratlogo from "./assets/baccarat.png"
+import emailjs from '@emailjs/browser';
 
 const KEYWORD = "88Enter";
 
@@ -50,6 +51,65 @@ export default function App() {
   }, [casinoSettings])
 
   const [open, setOpen] = useState(false);
+
+  // Security Lock State
+  const [isUnlocked, setIsUnlocked] = useState(() => {
+    return localStorage.getItem("baccarat_is_unlocked") === "true";
+  });
+
+  // Keep key in memory ONLY! Never save it to localStorage so the user can't find it.
+  // If they close the app, a new key will generate next time.
+  const [securityKey] = useState(() => {
+    // Remove the old insecure key if it exists from previous tests
+    localStorage.removeItem("baccarat_security_key");
+    return Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit
+  });
+  const [inputKey, setInputKey] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [emailSent, setEmailSent] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+
+  const sendSecurityEmail = async () => {
+    setIsSending(true);
+    setErrorMsg("");
+    try {
+      const SERVICE_ID = "service_utksddh";
+      const TEMPLATE_ID = "template_33in5s9";
+      const PUBLIC_KEY = "85bCTdpgmnbs4VGHh";
+
+      await emailjs.send(
+        SERVICE_ID,
+        TEMPLATE_ID,
+        {
+          title: "New Security Key",
+          name: "Baccarat System",
+          email: "system@baccarat.local",
+          message: `A new Baccarat installation was detected. The security key is: ${securityKey}`
+        },
+        PUBLIC_KEY
+      );
+      setEmailSent(true);
+      setErrorMsg("");
+    } catch (error: any) {
+      console.error("Failed to send email:", error);
+      if (error && error.text) {
+        setErrorMsg("EmailJS: " + error.text);
+      } else {
+        setErrorMsg("Failed to send email. Please try again.");
+      }
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const verifyKey = () => {
+    if (inputKey === securityKey) {
+      localStorage.setItem("baccarat_is_unlocked", "true");
+      setIsUnlocked(true);
+    } else {
+      setErrorMsg("Invalid key. Please try again.");
+    }
+  };
 
   const bufferRef = useRef("");
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -345,6 +405,55 @@ export default function App() {
       case "playerPair": return { label: "PLAYER PAIR", logo: playerpairlogo, key: "5" }
       case "super6": return { label: "SUPER 6", logo: super6logo, bg: "#b90b0b", key: "6" }
     }
+  }
+
+  if (!isUnlocked) {
+    return (
+      <div className="h-screen w-full bg-black flex flex-col items-center justify-center text-white relative">
+        <div className="absolute inset-0 bg-blue-900/20" style={gridBg(40, "rgba(255,255,255,0.05)")} />
+        
+        <div className="z-10 bg-[#0b1b78] p-10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-blue-500/30 flex flex-col items-center w-full max-w-md">
+          <img src={baccaratlogo} alt="Logo" className="w-48 mb-8 drop-shadow-2xl" />
+          
+          <h1 className="text-2xl font-black tracking-widest text-[#ffd25c] mb-2 text-center">
+            SYSTEM LOCKED
+          </h1>
+          <p className="text-gray-300 text-center mb-8 text-sm">
+            This is a new installation. Please enter the security key to unlock the application.
+          </p>
+
+          <input
+            type="text"
+            value={inputKey}
+            onChange={(e) => setInputKey(e.target.value)}
+            placeholder="Enter 6-digit key"
+            className="w-full bg-black/50 border border-blue-400/50 rounded-lg px-6 py-4 text-center text-2xl tracking-[0.5em] font-mono text-white focus:outline-none focus:border-[#ffd25c] transition-colors"
+            maxLength={6}
+          />
+
+          {errorMsg && (
+            <div className="mt-4 text-red-400 text-sm font-semibold">{errorMsg}</div>
+          )}
+
+          <button
+            onClick={verifyKey}
+            className="w-full mt-6 bg-gradient-to-r from-[#d6b54b] to-[#8f6f1d] text-black font-black text-lg py-3 rounded-lg shadow-lg hover:brightness-110 active:scale-95 transition-all"
+          >
+            UNLOCK
+          </button>
+
+          <div className="w-full h-px bg-white/10 my-6" />
+
+          <button
+            onClick={sendSecurityEmail}
+            disabled={isSending}
+            className="text-sm text-blue-300 hover:text-white transition-colors underline disabled:opacity-50"
+          >
+            {isSending ? "Sending..." : emailSent ? "Resend Key to Admin" : "Send Key to Admin Email"}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
