@@ -123,6 +123,8 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isUnlocked) return; // Completely ignore keyboard shortcuts if the system is locked
+
       // Ignore typing inside inputs
       const tag = document.activeElement?.tagName?.toLowerCase();
 
@@ -171,7 +173,7 @@ export default function App() {
       window.removeEventListener("keydown", handleKeyDown);
       clearTimeout(timerRef.current);
     };
-  }, []);
+  }, [isUnlocked]);
 
 
   const gridBg = (cell: number, line: string) =>
@@ -343,6 +345,8 @@ export default function App() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (!isUnlocked) return; // Completely ignore keyboard shortcuts if the system is locked
+
       const target = e.target as HTMLElement | null
       const tag = target?.tagName?.toLowerCase()
       const isTypingSurface =
@@ -372,7 +376,7 @@ export default function App() {
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [open, pendingBead])
+  }, [open, pendingBead, isUnlocked])
 
   const RoadBeads = ({ cell }: { cell: number }) => {
     const pad = Math.max(6, Math.floor(cell * 0.18))
