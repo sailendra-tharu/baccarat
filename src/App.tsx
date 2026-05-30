@@ -8,6 +8,7 @@ import bankerpairlogo from "./assets/bankerpair.png"
 import super6logo from "./assets/super6.png"
 import baccaratlogo from "./assets/baccarat.png"
 import emailjs from '@emailjs/browser';
+import localforage from 'localforage';
 
 const KEYWORD = "88Enter";
 
@@ -52,10 +53,16 @@ export default function App() {
 
   const [open, setOpen] = useState(false);
 
-  // Security Lock State
-  const [isUnlocked, setIsUnlocked] = useState(() => {
-    return localStorage.getItem("baccarat_is_unlocked") === "true";
-  });
+  // Security Lock State (null = checking database)
+  const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    localforage.getItem("baccarat_is_unlocked").then((value) => {
+      setIsUnlocked(value === true);
+    }).catch(() => {
+      setIsUnlocked(false);
+    });
+  }, []);
 
   // Keep key in memory ONLY! Never save it to localStorage so the user can't find it.
   // If they close the app, a new key will generate next time.
@@ -102,9 +109,9 @@ export default function App() {
     }
   };
 
-  const verifyKey = () => {
+  const verifyKey = async () => {
     if (inputKey === securityKey) {
-      localStorage.setItem("baccarat_is_unlocked", "true");
+      await localforage.setItem("baccarat_is_unlocked", true);
       setIsUnlocked(true);
     } else {
       setErrorMsg("Invalid key. Please try again.");
@@ -407,7 +414,11 @@ export default function App() {
     }
   }
 
-  if (!isUnlocked) {
+  if (isUnlocked === null) {
+    return <div className="h-screen w-full bg-black"></div>; // Blank screen while checking DB
+  }
+
+  if (isUnlocked === false) {
     return (
       <div className="h-screen w-full bg-black flex flex-col items-center justify-center text-white relative">
         <div className="absolute inset-0 bg-blue-900/20" style={gridBg(40, "rgba(255,255,255,0.05)")} />
