@@ -52,10 +52,10 @@ export default function App() {
   const [open, setOpen] = useState(false);
 
   const bufferRef = useRef("");
-  const timerRef = useRef(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore typing inside inputs
       const tag = document.activeElement?.tagName?.toLowerCase();
 
@@ -93,7 +93,7 @@ export default function App() {
       // Reset after inactivity
       clearTimeout(timerRef.current);
 
-      timerRef.current = setTimeout(() => {
+      timerRef.current = window.setTimeout(() => {
         bufferRef.current = "";
       }, 1500);
     };
@@ -396,7 +396,7 @@ export default function App() {
               <div className="relative flex items-center justify-between gap-4 bg-blue-800 px-4">
                 <div className="flex items-center gap-3">
                   <div className="text-[26px] font-black tracking-wide text-[#ffd25c] drop-shadow-[0_2px_0_rgba(0,0,0,0.35)]">
-                    Welcome to Baccarat
+                    WELCOME TO BACCARAT
                   </div>
                 </div>
 

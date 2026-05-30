@@ -4,5 +4,16 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(),tailwindcss()],
+  plugins: [react(), tailwindcss()],
+  
+  // Tauri expects a fixed port, fail if that port is not available
+  server: {
+    port: 1420,
+    strictPort: true,
+    host: true,
+  },
+  // prevent vite from obscuring rust errors
+  clearScreen: false,
+  // to make use of `TAURI_DEBUG` and other env variables
+  envPrefix: ["VITE_", "TAURI_"],
 })
