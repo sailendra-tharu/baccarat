@@ -44,9 +44,14 @@ const IMAGE_NAMES: (keyof AppImages)[] = [
 async function loadImage(name: string): Promise<string> {
   try {
     const b64: string = await invoke("get_image_base64", { name });
-    if (b64) return `data:image/png;base64,${b64}`;
+    if (b64) {
+      console.log(`[useAppImages] Loaded image successfully: ${name}`);
+      return `data:image/png;base64,${b64}`;
+    }
+    console.log(`[useAppImages] Image is empty or not found: ${name}`);
     return "";
-  } catch {
+  } catch (error) {
+    console.error(`[useAppImages] Error loading image: ${name}`, error);
     return "";
   }
 }

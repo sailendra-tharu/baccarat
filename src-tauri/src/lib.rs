@@ -21,12 +21,13 @@ const ALL_IMAGES: &[&str] = &[
 ];
 
 /// Returns (and creates if needed) the AppData images directory
-fn images_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let config_dir = app
-        .path()
-        .app_config_dir()
-        .map_err(|e| e.to_string())?;
-    let dir = config_dir.join("images");
+fn images_dir(_app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    // Get the directory where the .exe is running
+    let exe_path = std::env::current_exe().map_err(|e| e.to_string())?;
+    let exe_dir = exe_path
+        .parent()
+        .ok_or_else(|| "Failed to get exe directory".to_string())?;
+    let dir = exe_dir.join("images");
     if !dir.exists() {
         fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     }
@@ -59,17 +60,29 @@ fn seed_images(app: &tauri::AppHandle) {
 /// Returns "" if the file is not yet present (React falls back to bundled asset).
 #[tauri::command]
 async fn get_image_base64(app: tauri::AppHandle, name: String) -> Result<String, String> {
+    println!("[Rust] get_image_base64 called with name: {}", name);
     let filename = image_filename(&name);
     if filename.is_empty() {
+        println!("[Rust] Unknown image name: {}", name);
         return Err(format!("Unknown image name: {name}"));
     }
     let dir = images_dir(&app)?;
     let path = dir.join(filename);
+    println!("[Rust] Reading image path: {:?}", path);
     if !path.exists() {
+        println!("[Rust] Path does not exist: {:?}", path);
         return Ok(String::new());
     }
-    let bytes = fs::read(&path).map_err(|e| e.to_string())?;
-    Ok(base64_encode(&bytes))
+    match fs::read(&path) {
+        Ok(bytes) => {
+            println!("[Rust] Read {} bytes successfully from {:?}", bytes.len(), path);
+            Ok(base64_encode(&bytes))
+        }
+        Err(e) => {
+            println!("[Rust] Failed to read file {:?}: {}", path, e);
+            Err(e.to_string())
+        }
+    }
 }
 
 /// Minimal inline base64 encoder — avoids adding an extra crate
