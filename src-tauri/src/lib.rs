@@ -5,19 +5,19 @@ use tauri::Manager;
 /// Maps a logical image name to a file name
 fn image_filename(name: &str) -> &'static str {
     match name {
-        "banker" => "banker.png",
-        "player" => "player.png",
-        "tie" => "tie.png",
-        "bankerPair" => "bankerpair.png",
-        "playerPair" => "playerpair.png",
-        "super6" => "super6.png",
         "baccarat" => "baccarat.png",
         _ => "",
     }
 }
 
-const ALL_IMAGES: &[&str] = &[
-    "banker", "player", "tie", "bankerPair", "playerPair", "super6", "baccarat",
+const EDITABLE_IMAGES: &[&str] = &["baccarat"];
+const LEGACY_IMAGE_FILES: &[&str] = &[
+    "banker.png",
+    "bankerpair.png",
+    "player.png",
+    "playerpair.png",
+    "super6.png",
+    "tie.png",
 ];
 
 /// Returns (and creates if needed) the AppData images directory
@@ -38,7 +38,11 @@ fn images_dir(_app: &tauri::AppHandle) -> Result<PathBuf, String> {
 fn seed_images(app: &tauri::AppHandle) {
     let Ok(dir) = images_dir(app) else { return };
 
-    for name in ALL_IMAGES {
+    for filename in LEGACY_IMAGE_FILES {
+        let _ = fs::remove_file(dir.join(filename));
+    }
+
+    for name in EDITABLE_IMAGES {
         let filename = image_filename(name);
         let dest = dir.join(filename);
         if dest.exists() {

@@ -30,15 +30,7 @@ const FALLBACKS: AppImages = {
   baccarat: baccaratFallback,
 };
 
-const IMAGE_NAMES: (keyof AppImages)[] = [
-  "banker",
-  "player",
-  "tie",
-  "bankerPair",
-  "playerPair",
-  "super6",
-  "baccarat",
-];
+const EDITABLE_IMAGE_NAMES: (keyof AppImages)[] = ["baccarat"];
 
 // Tauri invoke: returns base64 data URL or empty string if not found
 async function loadImage(name: string): Promise<string> {
@@ -65,7 +57,7 @@ export function useAppImages(): AppImages {
     async function load() {
       const results: Partial<AppImages> = {};
       await Promise.all(
-        IMAGE_NAMES.map(async (name) => {
+        EDITABLE_IMAGE_NAMES.map(async (name) => {
           const url = await loadImage(name);
           results[name] = url || FALLBACKS[name];
         })
