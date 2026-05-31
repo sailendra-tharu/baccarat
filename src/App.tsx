@@ -16,7 +16,7 @@ interface RoadBeadsProps {
   bankerpairlogo: string;
   playerpairlogo: string;
   super6logo: string;
-  variant?: 'logo' | 'dot';
+  variant?: 'logo' | 'dot' | 'stick';
 }
 
 // For Big Road: plain colored circles, but Super6 uses its logo
@@ -80,6 +80,41 @@ const beadDot = (bead: Bead, super6logo: string) => {
         backgroundColor: bg,
       }}
     />
+  );
+};
+
+// For Cockroach Road: diagonal sticks/lines
+const beadStick = (bead: Bead) => {
+  const colorMap: Record<Bead, string> = {
+    banker: 'red',
+    player: '#1a49c8',
+    tie: '#1f7a44',
+    bankerPair: 'red',
+    playerPair: '#1a49c8',
+    super6: 'brown',
+  };
+  const color = colorMap[bead];
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <div
+        style={{
+          width: '2px',
+          height: '85%',
+          backgroundColor: color,
+          transform: 'rotate(-45deg)',
+          borderRadius: '1px',
+        }}
+      />
+    </div>
   );
 };
 
@@ -173,7 +208,9 @@ const RoadBeads = memo(({ beads, bankerLogo, playerLogo, tieLogo, bankerpairlogo
                 <div className="w-[92%] h-[92%] grid place-items-center">
                   {variant === 'dot'
                     ? beadDot(b, super6logo)
-                    : beadNode(b, bankerLogo, playerLogo, tieLogo, bankerpairlogo, playerpairlogo, super6logo)
+                    : variant === 'stick'
+                      ? beadStick(b)
+                      : beadNode(b, bankerLogo, playerLogo, tieLogo, bankerpairlogo, playerpairlogo, super6logo)
                   }
                 </div>
               )}
@@ -736,7 +773,7 @@ export default function App() {
                     <div className="min-h-[180px] md:min-h-0 rounded-[10px] bg-gradient-to-b from-[#d6b54b] to-[#8f6f1d] p-[5px] shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
                       <div className="h-full w-full rounded-[7px] bg-[#0b1b78] p-[6px]">
                         <div className="relative h-full w-full rounded-[7px] bg-white overflow-hidden">
-                          <RoadBeads beads={beads} bankerLogo={bankerLogo} playerLogo={playerLogo} tieLogo={tieLogo} bankerpairlogo={bankerpairlogo} playerpairlogo={playerpairlogo} super6logo={super6logo} />
+                          <RoadBeads beads={beads} bankerLogo={bankerLogo} playerLogo={playerLogo} tieLogo={tieLogo} bankerpairlogo={bankerpairlogo} playerpairlogo={playerpairlogo} super6logo={super6logo} variant="stick" />
                           <span className="pointer-events-none absolute bottom-1 right-2 select-none text-[11px] md:text-[13px] font-semibold tracking-wide text-gray-300">Cockroach Road</span>
                         </div>
                       </div>
@@ -744,7 +781,7 @@ export default function App() {
                     <div className="min-h-[180px] md:min-h-0 rounded-[10px] bg-gradient-to-b from-[#d6b54b] to-[#8f6f1d] p-[5px] shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
                       <div className="h-full w-full rounded-[7px] bg-[#0b1b78] p-[6px]">
                         <div className="relative h-full w-full rounded-[7px] bg-white overflow-hidden">
-                          <RoadBeads beads={beads} bankerLogo={bankerLogo} playerLogo={playerLogo} tieLogo={tieLogo} bankerpairlogo={bankerpairlogo} playerpairlogo={playerpairlogo} super6logo={super6logo} />
+                          <RoadBeads beads={beads} bankerLogo={bankerLogo} playerLogo={playerLogo} tieLogo={tieLogo} bankerpairlogo={bankerpairlogo} playerpairlogo={playerpairlogo} super6logo={super6logo} variant="dot" />
                           <span className="pointer-events-none absolute bottom-1 right-2 select-none text-[11px] md:text-[13px] font-semibold tracking-wide text-gray-300">Small Road</span>
                         </div>
                       </div>
