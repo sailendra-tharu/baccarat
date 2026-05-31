@@ -1,10 +1,189 @@
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, memo } from "react"
 import CasinoSettingsModal from "./components/modal";
 import { useAppImages } from "./hooks/useAppImages";
 import emailjs from '@emailjs/browser';
 import localforage from 'localforage';
 
 const KEYWORD = "88Enter";
+
+type Bead = "banker" | "player" | "tie" | "bankerPair" | "playerPair" | "super6"
+
+interface RoadBeadsProps {
+  beads: Bead[];
+  bankerLogo: string;
+  playerLogo: string;
+  tieLogo: string;
+  bankerpairlogo: string;
+  playerpairlogo: string;
+  super6logo: string;
+  variant?: 'logo' | 'dot';
+}
+
+// For Big Road: plain colored circles, but Super6 uses its logo
+const beadDot = (bead: Bead, super6logo: string) => {
+  // Banker Pair = hollow red ring, Player Pair = hollow blue ring
+  if (bead === 'bankerPair') {
+    return (
+      <div
+        className="rounded-full"
+        style={{
+          width: '88%',
+          height: '88%',
+          backgroundColor: 'white',
+          border: '3px solid #b90b0b',
+          boxSizing: 'border-box',
+        }}
+      />
+    );
+  }
+  if (bead === 'playerPair') {
+    return (
+      <div
+        className="rounded-full"
+        style={{
+          width: '88%',
+          height: '88%',
+          backgroundColor: 'white',
+          border: '3px solid #1a49c8',
+          boxSizing: 'border-box',
+        }}
+      />
+    );
+  }
+  // Super6 uses logo image
+  if (bead === 'super6') {
+    return (
+      <div
+        className="grid place-items-center rounded-full bg-[#f7e7b4] shadow-[inset_0_0_0_2px_rgba(0,0,0,0.2)] overflow-hidden"
+        style={{ width: '100%', height: '100%' }}
+      >
+        <img src={super6logo} alt="S6" className="w-full h-full object-cover" />
+      </div>
+    );
+  }
+
+  const configs: Record<Bead, { bg: string }> = {
+    banker: { bg: '#b90b0b' },
+    player: { bg: '#1a49c8' },
+    tie: { bg: '#1f7a44' },
+    bankerPair: { bg: '#b90b0b' },
+    playerPair: { bg: '#1a49c8' },
+    super6: { bg: '#d4a017' },
+  };
+  const { bg } = configs[bead];
+  return (
+    <div
+      className="rounded-full"
+      style={{
+        width: '88%',
+        height: '88%',
+        backgroundColor: bg,
+      }}
+    />
+  );
+};
+
+const beadNode = (
+  bead: Bead,
+  bankerLogo: string,
+  playerLogo: string,
+  tieLogo: string,
+  bankerpairlogo: string,
+  playerpairlogo: string,
+  super6logo: string
+) => {
+  switch (bead) {
+    case "banker":
+      return (
+        <div className="grid place-items-center rounded-full bg-[#b90b0b] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.8)] overflow-hidden" style={{ width: '100%', height: '100%' }}>
+          <img src={bankerLogo} alt="B" className="w-full h-full object-cover" />
+        </div>
+      )
+    case "player":
+      return (
+        <div className="grid place-items-center rounded-full bg-[#1a49c8] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.8)] overflow-hidden" style={{ width: '100%', height: '100%' }}>
+          <img src={playerLogo} alt="P" className="w-full h-full object-cover" />
+        </div>
+      )
+    case "tie":
+      return (
+        <div className="grid place-items-center rounded-full bg-[#1f7a44] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.8)] overflow-hidden" style={{ width: '100%', height: '100%' }}>
+          <img src={tieLogo} alt="T" className="w-full h-full object-cover" />
+        </div>
+      )
+    case "bankerPair":
+      return (
+        <div className="grid place-items-center rounded-full bg-[#1f7a44] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.8)] overflow-hidden" style={{ width: '100%', height: '100%' }}>
+          <img src={bankerpairlogo} alt="BP" className="w-full h-full object-cover" />
+        </div>
+      )
+    case "playerPair":
+      return (
+        <div className="grid place-items-center rounded-full bg-[#1f7a44] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.8)] overflow-hidden" style={{ width: '100%', height: '100%' }}>
+          <img src={playerpairlogo} alt="PP" className="w-full h-full object-cover" />
+        </div>
+      )
+    case "super6":
+      return (
+        <div className="grid place-items-center rounded-full bg-[#f7e7b4] shadow-[inset_0_0_0_2px_rgba(0,0,0,0.2)] overflow-hidden" style={{ width: '100%', height: '100%' }}>
+          <img src={super6logo} alt="S6" className="w-full h-full object-cover" />
+        </div>
+      )
+  }
+}
+
+const RoadBeads = memo(({ beads, bankerLogo, playerLogo, tieLogo, bankerpairlogo, playerpairlogo, super6logo, variant = 'logo' }: RoadBeadsProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState(28);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const newSize = Math.max(10, (entry.contentRect.height - 7) / 6);
+        setSize(newSize);
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const rows = 6;
+  const cols = 100;
+
+  return (
+    <div ref={containerRef} className="absolute inset-0 overflow-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <div
+        className="grid content-start justify-start"
+        style={{
+          gridTemplateRows: `repeat(${rows}, ${size}px)`,
+          gridAutoColumns: `${size}px`,
+          gridAutoFlow: "column",
+          gap: '1px',
+          backgroundColor: 'rgba(0,0,0,0.22)',
+          padding: '1px',
+          minWidth: '100%',
+        }}
+      >
+        {Array.from({ length: rows * cols }).map((_, i) => {
+          const b = beads[i];
+          return (
+            <div key={i} className="relative bg-white flex items-center justify-center overflow-hidden">
+              {b && (
+                <div className="w-[92%] h-[92%] grid place-items-center">
+                  {variant === 'dot'
+                    ? beadDot(b, super6logo)
+                    : beadNode(b, bankerLogo, playerLogo, tieLogo, bankerpairlogo, playerpairlogo, super6logo)
+                  }
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+})
 
 const initialSettings = {
   language: "English",
@@ -208,9 +387,6 @@ export default function App() {
     </div>
   )
 
-  // Add these two useEffects (after the existing ones):
-  type Bead = "banker" | "player" | "tie" | "bankerPair" | "playerPair" | "super6"
-
   const beadForKey = (key: number): Bead | null => {
     switch (key) {
       case 1:
@@ -227,66 +403,6 @@ export default function App() {
         return "super6"
       default:
         return null
-    }
-  }
-
-  const beadNode = (bead: Bead) => {
-    const size = 28
-    switch (bead) {
-      case "banker":
-        return (
-          <div
-            className="grid place-items-center rounded-full bg-[#b90b0b] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)] overflow-hidden"
-            style={{ width: size, height: size }}
-          >
-            <img src={bankerLogo} alt="B" className="w-full h-full object-cover" />
-          </div>
-        )
-      case "player":
-        return (
-          <div
-            className="grid place-items-center rounded-full bg-[#1a49c8] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)] overflow-hidden"
-            style={{ width: size, height: size }}
-          >
-            <img src={playerLogo} alt="P" className="w-full h-full object-cover" />
-          </div>
-        )
-      case "tie":
-        return (
-          <div
-            className="grid place-items-center rounded-full bg-[#1f7a44] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)] overflow-hidden"
-            style={{ width: size, height: size }}
-          >
-            <img src={tieLogo} alt="T" className="w-full h-full object-cover" />
-          </div>
-        )
-      case "bankerPair":
-        return (
-          <div
-            className="grid place-items-center rounded-full bg-[#1f7a44] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)] overflow-hidden"
-            style={{ width: size, height: size }}
-          >
-            <img src={bankerpairlogo} alt="T" className="w-full h-full object-cover" />
-          </div>
-        )
-      case "playerPair":
-        return (
-          <div
-            className="grid place-items-center rounded-full bg-[#1f7a44] shadow-[inset_0_0_0_3px_rgba(255,255,255,0.8)] overflow-hidden"
-            style={{ width: size, height: size }}
-          >
-            <img src={playerpairlogo} alt="T" className="w-full h-full object-cover" />
-          </div>
-        )
-      case "super6":
-        return (
-          <div
-            className="grid place-items-center rounded-full bg-[#f7e7b4] shadow-[inset_0_0_0_2px_rgba(0,0,0,0.2)] overflow-hidden"
-            style={{ width: size, height: size }}
-          >
-            <img src={super6logo} alt="S6" className="w-full h-full object-cover" />
-          </div>
-        )
     }
   }
 
@@ -380,34 +496,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [open, pendingBead, isUnlocked])
 
-  const RoadBeads = ({ cell }: { cell: number }) => {
-    const pad = Math.max(6, Math.floor(cell * 0.18))
-    const beadBox = Math.max(12, Math.min(30, cell - pad * 2))
-    return (
-      <div className="absolute inset-0 overflow-hidden rounded-[7px]">
-        <div
-          className="grid h-full content-start justify-start gap-0"
-          style={{
-            gridTemplateRows: `repeat(auto-fill, ${cell}px)`,
-            gridAutoColumns: `${cell}px`,
-            gridAutoFlow: "column",
-          }}
-        >
-          {beads.map((b, i) => (
-            <div
-              key={i}
-              className="grid place-items-center"
-              style={{ width: cell, height: cell, padding: pad, boxSizing: "border-box" }}
-            >
-              <div style={{ transform: `scale(${beadBox / 30})`, transformOrigin: "center" }}>
-                {beadNode(b)}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
+  // RoadBeads is now a top-level memoized component — no re-render flicker!
 
   const beadLabel = (bead: Bead) => {
     switch (bead) {
@@ -552,16 +641,16 @@ export default function App() {
 
               {/* Board */}
               <div className="relative bg-blue-900 p-2 md:p-3 flex-1 md:min-h-0 md:h-full md:overflow-hidden">
-                <div className="flex flex-col gap-2 md:grid md:h-full md:gap-3 md:grid-rows-[1fr_1.1fr_1fr]">
+                <div className="flex flex-col gap-2 md:grid md:h-full md:gap-3 md:grid-rows-[0.7fr_1.2fr_2.4fr]">
 
                   {/* Score Row — Bead Plate + Score Panel (FIRST, below header) */}
                   <div className="grid grid-cols-2 gap-2 md:gap-3">
 
                     {/* Bead Plate */}
                     <div className="min-h-[160px] md:min-h-0 rounded-[10px] bg-gradient-to-b from-[#d6b54b] to-[#8f6f1d] p-[5px] shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
-                      <div className="relative h-full w-full rounded-[7px] bg-white" style={gridBg(32, "rgba(0,0,0,0.22)")}>
-                        <RoadBeads cell={32} />
-                        <span className="pointer-events-none absolute bottom-1 right-2 select-none text-[11px] md:text-[13px] font-semibold tracking-wide text-gray-300">Bead Plate</span>
+                      <div className="relative h-full w-full rounded-[7px] bg-white overflow-hidden">
+                        <RoadBeads beads={beads} bankerLogo={bankerLogo} playerLogo={playerLogo} tieLogo={tieLogo} bankerpairlogo={bankerpairlogo} playerpairlogo={playerpairlogo} super6logo={super6logo} />
+                        <span className="pointer-events-none absolute bottom-1 right-2 select-none text-[11px] md:text-[20px] font-medium tracking-wide text-gray-300">Bead Plate</span>
                       </div>
                     </div>
 
@@ -628,43 +717,43 @@ export default function App() {
 
                   {/* Big Road — SECOND */}
                   <div className="min-h-[100px] md:min-h-0 rounded-[10px] bg-gradient-to-b from-[#d6b54b] to-[#8f6f1d] p-[5px] shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
-                    <div className="relative h-full w-full rounded-[7px] bg-white" style={gridBg(38, "rgba(0,0,0,0.22)")}>
-                      <RoadBeads cell={38} />
-                      <span className="pointer-events-none absolute bottom-2 right-3 select-none text-[16px] md:text-[20px] font-semibold tracking-wide text-gray-300">Big Road</span>
+                    <div className="relative h-full w-full rounded-[7px] bg-white overflow-hidden">
+                      <RoadBeads beads={beads} bankerLogo={bankerLogo} playerLogo={playerLogo} tieLogo={tieLogo} bankerpairlogo={bankerpairlogo} playerpairlogo={playerpairlogo} super6logo={super6logo} variant="dot" />
+                      <span className="pointer-events-none absolute bottom-2 right-3 select-none text-[16px] md:text-[20px] font-medium tracking-wide text-gray-300">Big Road</span>
                     </div>
                   </div>
 
                   {/* Small Roads — THIRD */}
                   <div className="grid grid-cols-2 gap-2 md:gap-3">
-                    <div className="min-h-[120px] md:min-h-0 rounded-[10px] bg-gradient-to-b from-[#d6b54b] to-[#8f6f1d] p-[5px] shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
+                    <div className="min-h-[180px] md:min-h-0 rounded-[10px] bg-gradient-to-b from-[#d6b54b] to-[#8f6f1d] p-[5px] shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
                       <div className="h-full w-full rounded-[7px] bg-[#0b1b78] p-[6px]">
-                        <div className="relative h-full w-full rounded-[7px] bg-white" style={gridBg(28, "rgba(0,0,0,0.22)")}>
-                          <RoadBeads cell={28} />
+                        <div className="relative h-full w-full rounded-[7px] bg-white overflow-hidden">
+                          <RoadBeads beads={beads} bankerLogo={bankerLogo} playerLogo={playerLogo} tieLogo={tieLogo} bankerpairlogo={bankerpairlogo} playerpairlogo={playerpairlogo} super6logo={super6logo} variant="dot" />
                           <span className="pointer-events-none absolute bottom-1 right-2 select-none text-[11px] md:text-[13px] font-semibold tracking-wide text-gray-300">Big Eye Boy</span>
                         </div>
                       </div>
                     </div>
-                    <div className="min-h-[120px] md:min-h-0 rounded-[10px] bg-gradient-to-b from-[#d6b54b] to-[#8f6f1d] p-[5px] shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
+                    <div className="min-h-[180px] md:min-h-0 rounded-[10px] bg-gradient-to-b from-[#d6b54b] to-[#8f6f1d] p-[5px] shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
                       <div className="h-full w-full rounded-[7px] bg-[#0b1b78] p-[6px]">
-                        <div className="relative h-full w-full rounded-[7px] bg-white" style={gridBg(28, "rgba(0,0,0,0.22)")}>
-                          <RoadBeads cell={28} />
+                        <div className="relative h-full w-full rounded-[7px] bg-white overflow-hidden">
+                          <RoadBeads beads={beads} bankerLogo={bankerLogo} playerLogo={playerLogo} tieLogo={tieLogo} bankerpairlogo={bankerpairlogo} playerpairlogo={playerpairlogo} super6logo={super6logo} />
                           <span className="pointer-events-none absolute bottom-1 right-2 select-none text-[11px] md:text-[13px] font-semibold tracking-wide text-gray-300">Cockroach Road</span>
                         </div>
                       </div>
                     </div>
-                    <div className="min-h-[120px] md:min-h-0 rounded-[10px] bg-gradient-to-b from-[#d6b54b] to-[#8f6f1d] p-[5px] shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
+                    <div className="min-h-[180px] md:min-h-0 rounded-[10px] bg-gradient-to-b from-[#d6b54b] to-[#8f6f1d] p-[5px] shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
                       <div className="h-full w-full rounded-[7px] bg-[#0b1b78] p-[6px]">
-                        <div className="relative h-full w-full rounded-[7px] bg-white" style={gridBg(28, "rgba(0,0,0,0.22)")}>
-                          <RoadBeads cell={28} />
+                        <div className="relative h-full w-full rounded-[7px] bg-white overflow-hidden">
+                          <RoadBeads beads={beads} bankerLogo={bankerLogo} playerLogo={playerLogo} tieLogo={tieLogo} bankerpairlogo={bankerpairlogo} playerpairlogo={playerpairlogo} super6logo={super6logo} />
                           <span className="pointer-events-none absolute bottom-1 right-2 select-none text-[11px] md:text-[13px] font-semibold tracking-wide text-gray-300">Small Road</span>
                         </div>
                       </div>
                     </div>
-                    <div className="min-h-[120px] md:min-h-0 rounded-[10px] bg-gradient-to-b from-[#d6b54b] to-[#8f6f1d] p-[5px] shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
+                    <div className="min-h-[180px] md:min-h-0 rounded-[10px] bg-gradient-to-b from-[#d6b54b] to-[#8f6f1d] p-[5px] shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
                       <div className="h-full w-full rounded-[7px] bg-[#0b1b78] p-[6px]">
-                        <div className="relative h-full w-full rounded-[7px] bg-white" style={gridBg(28, "rgba(0,0,0,0.22)")}>
-                          <RoadBeads cell={28} />
-                          <span className="pointer-events-none absolute bottom-1 right-2 select-none text-[11px] md:text-[13px] font-semibold tracking-wide text-gray-300">Table 4</span>
+                        <div className="relative h-full w-full rounded-[7px] bg-white overflow-hidden">
+                          <RoadBeads beads={beads} bankerLogo={bankerLogo} playerLogo={playerLogo} tieLogo={tieLogo} bankerpairlogo={bankerpairlogo} playerpairlogo={playerpairlogo} super6logo={super6logo} variant="dot" />
+                          <span className="pointer-events-none absolute bottom-1 right-2 select-none text-[11px] md:text-[13px] font-semibold tracking-wide text-gray-300">Three Star Road</span>
                         </div>
                       </div>
                     </div>
