@@ -1,12 +1,6 @@
 import { useEffect, useState, useRef } from "react"
 import CasinoSettingsModal from "./components/modal";
-import tieLogo from "./assets/tie.png";
-import playerLogo from "./assets/player.png";
-import bankerLogo from "./assets/banker.png";
-import playerpairlogo from "./assets/playerpair.png"
-import bankerpairlogo from "./assets/bankerpair.png"
-import super6logo from "./assets/super6.png"
-import baccaratlogo from "./assets/baccarat.png"
+import { useAppImages } from "./hooks/useAppImages";
 import emailjs from '@emailjs/browser';
 import localforage from 'localforage';
 
@@ -34,6 +28,14 @@ const initialSettings = {
 };
 
 export default function App() {
+  const imgs = useAppImages();
+  const bankerLogo = imgs.banker;
+  const playerLogo = imgs.player;
+  const tieLogo = imgs.tie;
+  const bankerpairlogo = imgs.bankerPair;
+  const playerpairlogo = imgs.playerPair;
+  const super6logo = imgs.super6;
+  const baccaratlogo = imgs.baccarat;
 
 
   const [casinoSettings, setCasinoSettings] = useState(() => {
