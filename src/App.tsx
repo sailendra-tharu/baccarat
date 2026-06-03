@@ -4,7 +4,6 @@ import CasinoSettingsModal from "./components/modal";
 import { useAppImages } from "./hooks/useAppImages";
 
 const KEYWORD = "88Enter";
-let pendriveDialogShownThisRun = false;
 
 type PendriveLicenseStatus = {
   unlocked: boolean;
@@ -321,9 +320,7 @@ export default function App() {
   // Security Lock State (null = checking pendrive license)
   const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null);
   const [licenseMessage, setLicenseMessage] = useState("Checking pendrive license...");
-  const missingPendriveDialogShownRef = useRef(false);
   const failedLicenseChecksRef = useRef(0);
-  const missingPendriveDialogTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const checkPendriveLicense = async () => {
     try {
@@ -359,22 +356,6 @@ export default function App() {
     const interval = window.setInterval(checkPendriveLicense, 3000);
     return () => window.clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    if (isUnlocked !== false || missingPendriveDialogShownRef.current || pendriveDialogShownThisRun) {
-      return;
-    }
-
-    missingPendriveDialogTimerRef.current = window.setTimeout(() => {
-      missingPendriveDialogShownRef.current = true;
-      pendriveDialogShownThisRun = true;
-      invoke("show_pendrive_required_dialog", { message: licenseMessage }).catch(() => { });
-    }, 1500);
-
-    return () => {
-      clearTimeout(missingPendriveDialogTimerRef.current);
-    };
-  }, [isUnlocked, licenseMessage]);
 
   const bufferRef = useRef("");
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);

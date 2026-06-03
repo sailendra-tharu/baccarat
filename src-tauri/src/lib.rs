@@ -303,45 +303,6 @@ fn write_license(path: &Path, license: &PendriveLicense) -> Result<(), String> {
     fs::write(path, text).map_err(|e| format!("Could not bind license to this computer: {e}"))
 }
 
-#[cfg(target_os = "windows")]
-fn wide_string(value: &str) -> Vec<u16> {
-    value.encode_utf16().chain(std::iter::once(0)).collect()
-}
-
-#[tauri::command]
-fn show_pendrive_required_dialog(message: String) -> Result<(), String> {
-    #[cfg(target_os = "windows")]
-    {
-        use windows_sys::Win32::UI::WindowsAndMessaging::{
-            MessageBoxW, MB_ICONERROR, MB_OKCANCEL, MB_SETFOREGROUND, MB_TOPMOST,
-        };
-
-        let title = wide_string("Insert disk");
-        let body = if message.starts_with("Insert a pendrive") {
-            "Please insert a disk into USB Drive (D:).".to_string()
-        } else {
-            message
-        };
-        let body = wide_string(&body);
-
-        unsafe {
-            MessageBoxW(
-                std::ptr::null_mut(),
-                body.as_ptr(),
-                title.as_ptr(),
-                MB_ICONERROR | MB_OKCANCEL | MB_SETFOREGROUND | MB_TOPMOST,
-            );
-        }
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        println!("Pendrive license required: {message}");
-    }
-
-    Ok(())
-}
-
 #[tauri::command]
 async fn check_pendrive_license() -> Result<PendriveLicenseStatus, String> {
     let machine_id = machine_id()?;
@@ -458,8 +419,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_image_base64,
-            check_pendrive_license,
-            show_pendrive_required_dialog
+            check_pendrive_license
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
