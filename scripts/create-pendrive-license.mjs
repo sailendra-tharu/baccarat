@@ -43,9 +43,24 @@ const license = {
 };
 
 const outputPath = join(targetDir, LICENSE_FILE_NAME);
+if (process.platform === "win32") {
+  try {
+    execFileSync("attrib", ["-r", "-h", outputPath], { windowsHide: true });
+  } catch {
+    // File may not exist yet.
+  }
+} else {
+  try {
+    chmodSync(outputPath, 0o666);
+  } catch {
+    // File may not exist yet.
+  }
+}
+
 writeFileSync(outputPath, `${JSON.stringify(license, null, 2)}\n`);
 chmodSync(outputPath, 0o444);
 if (process.platform === "win32") {
+  execFileSync("attrib", ["+r", outputPath], { windowsHide: true });
   execFileSync("attrib", ["+h", outputPath], { windowsHide: true });
 }
 console.log(`Created ${outputPath}`);
