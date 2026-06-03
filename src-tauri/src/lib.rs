@@ -213,7 +213,7 @@ fn removable_roots() -> Vec<PathBuf> {
     #[cfg(target_os = "windows")]
     {
         use windows_sys::Win32::Storage::FileSystem::{
-            GetDriveTypeW, GetLogicalDriveStringsW, DRIVE_FIXED, DRIVE_REMOVABLE,
+            GetDriveTypeW, GetLogicalDriveStringsW,
         };
         use windows_sys::Win32::System::Diagnostics::Debug::{
             SetErrorMode, SEM_FAILCRITICALERRORS, SEM_NOOPENFILEERRORBOX,
@@ -239,7 +239,7 @@ fn removable_roots() -> Vec<PathBuf> {
             if index > start {
                 let root = String::from_utf16_lossy(&buffer[start..index]);
                 let drive_type = unsafe { GetDriveTypeW(buffer[start..=index].as_ptr()) };
-                if drive_type == DRIVE_REMOVABLE || drive_type == DRIVE_FIXED {
+                if drive_type == 2 || drive_type == 3 {
                     roots.push(PathBuf::from(root));
                 }
             }
