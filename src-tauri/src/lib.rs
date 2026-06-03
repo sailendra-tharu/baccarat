@@ -239,7 +239,7 @@ fn removable_roots() -> Vec<PathBuf> {
             if index > start {
                 let root = String::from_utf16_lossy(&buffer[start..index]);
                 let drive_type = unsafe { GetDriveTypeW(buffer[start..=index].as_ptr()) };
-                if drive_type == 2 || drive_type == 3 {
+                if drive_type == 2 {
                     roots.push(PathBuf::from(root));
                 }
             }
@@ -377,6 +377,11 @@ async fn check_pendrive_license() -> Result<PendriveLicenseStatus, String> {
     })
 }
 
+#[tauri::command]
+fn exit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 /// Minimal inline base64 encoder — avoids adding an extra crate
 fn base64_encode(data: &[u8]) -> String {
     const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -419,7 +424,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_image_base64,
-            check_pendrive_license
+            check_pendrive_license,
+            exit_app
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -319,38 +319,55 @@ export default function App() {
 
   // Security Lock State (null = checking pendrive license)
   const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null);
+  const [licenseMessage, setLicenseMessage] = useState("Checking pendrive license...");
   const failedLicenseChecksRef = useRef(0);
+  const isCheckingLicenseRef = useRef(false);
+
+  const closeAppAfterLicenseFailure = () => {
+    void invoke("exit_app").catch(() => {
+      setIsUnlocked(false);
+    });
+  };
+
+  const handleLicenseFailure = () => {
+    failedLicenseChecksRef.current += 1;
+    setIsUnlocked((current) => {
+      if (current === true) {
+        if (failedLicenseChecksRef.current >= 2) {
+          closeAppAfterLicenseFailure();
+        }
+        return true;
+      }
+      return false;
+    });
+  };
 
   const checkPendriveLicense = async () => {
+    if (isCheckingLicenseRef.current) return;
+
+    isCheckingLicenseRef.current = true;
     try {
       const status = await invoke<PendriveLicenseStatus>("check_pendrive_license");
+      setLicenseMessage(status.message);
+
       if (status.unlocked) {
         failedLicenseChecksRef.current = 0;
         setIsUnlocked(true);
         return;
       }
 
-      failedLicenseChecksRef.current += 1;
-      setIsUnlocked((current) => {
-        if (current === true && failedLicenseChecksRef.current < 3) {
-          return true;
-        }
-        return false;
-      });
+      handleLicenseFailure();
     } catch (error) {
-      failedLicenseChecksRef.current += 1;
-      setIsUnlocked((current) => {
-        if (current === true && failedLicenseChecksRef.current < 3) {
-          return true;
-        }
-        return false;
-      });
+      setLicenseMessage(error instanceof Error ? error.message : String(error));
+      handleLicenseFailure();
+    } finally {
+      isCheckingLicenseRef.current = false;
     }
   };
 
   useEffect(() => {
     checkPendriveLicense();
-    const interval = window.setInterval(checkPendriveLicense, 3000);
+    const interval = window.setInterval(checkPendriveLicense, 5000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -557,12 +574,19 @@ export default function App() {
     }
   }
 
-  if (isUnlocked === null) {
-    return <div className="h-screen w-full bg-black"></div>;
-  }
-
-  if (isUnlocked === false) {
-    return <div className="h-screen w-full bg-black"></div>;
+  if (isUnlocked === null || isUnlocked === false) {
+    return (
+      <div className="grid h-screen w-full place-items-center bg-[#101214] px-6 text-white">
+        <div className="w-full max-w-md rounded-lg border border-white/15 bg-white/8 p-6 text-center shadow-2xl">
+          <div className="text-xl font-bold">
+            {isUnlocked === null ? "Checking license" : "License required"}
+          </div>
+          <div className="mt-3 text-sm leading-6 text-white/75">
+            {licenseMessage}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
