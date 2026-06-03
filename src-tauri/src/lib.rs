@@ -1,6 +1,12 @@
+use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 use tauri::Manager;
+
+const LICENSE_FILE_NAME: &str = "baccarat-license.json";
+const LICENSE_PRODUCT: &str = "baccarat-desktop";
+const LICENSE_SIGNING_SECRET: &str = "baccarat-license-v1-5f7c1f2e6d9a4b8c91e3a702d14f0c65";
 
 /// Maps a logical image name to a file name
 fn image_filename(name: &str) -> &'static str {
@@ -89,6 +95,261 @@ async fn get_image_base64(app: tauri::AppHandle, name: String) -> Result<String,
     }
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct PendriveLicense {
+    product: String,
+    key: String,
+    license_signature: String,
+    bound_machine: Option<String>,
+    binding_signature: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct PendriveLicenseStatus {
+    unlocked: bool,
+    message: String,
+    license_path: Option<String>,
+}
+
+fn fnv1a64(input: &str) -> String {
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in input.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    format!("{hash:016x}")
+}
+
+fn license_signature(key: &str) -> String {
+    fnv1a64(&format!(
+        "{LICENSE_PRODUCT}|license|{}|{LICENSE_SIGNING_SECRET}",
+        key.trim()
+    ))
+}
+
+fn binding_signature(key: &str, machine_id: &str) -> String {
+    fnv1a64(&format!(
+        "{LICENSE_PRODUCT}|binding|{}|{}|{LICENSE_SIGNING_SECRET}",
+        key.trim(),
+        machine_id.trim()
+    ))
+}
+
+fn command_output(command: &str, args: &[&str]) -> Option<String> {
+    let output = Command::new(command).args(args).output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if text.is_empty() {
+        None
+    } else {
+        Some(text)
+    }
+}
+
+fn machine_id() -> Result<String, String> {
+    #[cfg(target_os = "windows")]
+    {
+        let output = command_output(
+            "reg",
+            &[
+                "query",
+                r"HKLM\SOFTWARE\Microsoft\Cryptography",
+                "/v",
+                "MachineGuid",
+            ],
+        )
+        .ok_or_else(|| "Could not read Windows machine id".to_string())?;
+
+        if let Some(value) = output.lines().find_map(|line| {
+            if !line.contains("MachineGuid") {
+                return None;
+            }
+            line.split_whitespace().last().map(str::to_string)
+        }) {
+            return Ok(fnv1a64(&value));
+        }
+        Err("Could not parse Windows machine id".to_string())
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        for path in ["/etc/machine-id", "/var/lib/dbus/machine-id"] {
+            if let Ok(value) = fs::read_to_string(path) {
+                let trimmed = value.trim();
+                if !trimmed.is_empty() {
+                    return Ok(fnv1a64(trimmed));
+                }
+            }
+        }
+        Err("Could not read Linux machine id".to_string())
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let output = command_output("ioreg", &["-rd1", "-c", "IOPlatformExpertDevice"])
+            .ok_or_else(|| "Could not read macOS machine id".to_string())?;
+        if let Some(value) = output.lines().find_map(|line| {
+            if !line.contains("IOPlatformUUID") {
+                return None;
+            }
+            line.split('"').nth(3).map(str::to_string)
+        }) {
+            return Ok(fnv1a64(&value));
+        }
+        Err("Could not parse macOS machine id".to_string())
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+    {
+        Err("Unsupported operating system for pendrive licensing".to_string())
+    }
+}
+
+fn removable_roots() -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+
+    #[cfg(target_os = "windows")]
+    {
+        for letter in b'A'..=b'Z' {
+            let root = format!("{}:\\", letter as char);
+            let path = PathBuf::from(root);
+            if path.exists() {
+                roots.push(path);
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        if let Ok(user) = std::env::var("USER") {
+            roots.push(PathBuf::from(format!("/media/{user}")));
+            roots.push(PathBuf::from(format!("/run/media/{user}")));
+        }
+        roots.push(PathBuf::from("/mnt"));
+        roots.push(PathBuf::from("/media"));
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        roots.push(PathBuf::from("/Volumes"));
+    }
+
+    roots
+}
+
+fn license_paths() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+
+    for root in removable_roots() {
+        let direct = root.join(LICENSE_FILE_NAME);
+        if direct.exists() {
+            paths.push(direct);
+        }
+
+        let Ok(entries) = fs::read_dir(&root) else {
+            continue;
+        };
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                let candidate = path.join(LICENSE_FILE_NAME);
+                if candidate.exists() {
+                    paths.push(candidate);
+                }
+            }
+        }
+    }
+
+    paths
+}
+
+fn read_license(path: &Path) -> Result<PendriveLicense, String> {
+    let text = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    serde_json::from_str(&text).map_err(|e| format!("Invalid license JSON: {e}"))
+}
+
+fn write_license(path: &Path, license: &PendriveLicense) -> Result<(), String> {
+    let text = serde_json::to_string_pretty(license).map_err(|e| e.to_string())?;
+    fs::write(path, text).map_err(|e| format!("Could not bind license to this computer: {e}"))
+}
+
+#[tauri::command]
+async fn check_pendrive_license() -> Result<PendriveLicenseStatus, String> {
+    let machine_id = machine_id()?;
+    let paths = license_paths();
+
+    if paths.is_empty() {
+        return Ok(PendriveLicenseStatus {
+            unlocked: false,
+            message: format!("Insert a pendrive containing {LICENSE_FILE_NAME}."),
+            license_path: None,
+        });
+    }
+
+    let mut last_error = String::new();
+
+    for path in paths {
+        let mut license = match read_license(&path) {
+            Ok(license) => license,
+            Err(error) => {
+                last_error = error;
+                continue;
+            }
+        };
+
+        if license.product != LICENSE_PRODUCT {
+            last_error = "License is for a different product.".to_string();
+            continue;
+        }
+
+        if license.license_signature != license_signature(&license.key) {
+            last_error = "Pendrive secret key is not valid.".to_string();
+            continue;
+        }
+
+        match license.bound_machine.as_deref() {
+            Some(bound_machine) if bound_machine == machine_id => {
+                let expected = binding_signature(&license.key, &machine_id);
+                if license.binding_signature.as_deref() == Some(expected.as_str()) {
+                    return Ok(PendriveLicenseStatus {
+                        unlocked: true,
+                        message: "Pendrive license verified.".to_string(),
+                        license_path: Some(path.display().to_string()),
+                    });
+                }
+                last_error = "Pendrive binding signature is invalid.".to_string();
+            }
+            Some(_) => {
+                last_error = "This pendrive is already bound to another computer.".to_string();
+            }
+            None => {
+                license.bound_machine = Some(machine_id.clone());
+                license.binding_signature = Some(binding_signature(&license.key, &machine_id));
+                write_license(&path, &license)?;
+
+                return Ok(PendriveLicenseStatus {
+                    unlocked: true,
+                    message: "Pendrive license bound to this computer.".to_string(),
+                    license_path: Some(path.display().to_string()),
+                });
+            }
+        }
+    }
+
+    Ok(PendriveLicenseStatus {
+        unlocked: false,
+        message: if last_error.is_empty() {
+            "No valid pendrive license found.".to_string()
+        } else {
+            last_error
+        },
+        license_path: None,
+    })
+}
+
 /// Minimal inline base64 encoder — avoids adding an extra crate
 fn base64_encode(data: &[u8]) -> String {
     const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -129,7 +390,10 @@ pub fn run() {
             seed_images(app.handle());
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_image_base64])
+        .invoke_handler(tauri::generate_handler![
+            get_image_base64,
+            check_pendrive_license
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

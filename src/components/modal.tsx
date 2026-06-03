@@ -42,7 +42,7 @@ function Field({
 }) {
   return (
     <div className="flex items-center gap-2 py-1 border-b border-yellow-900/20">
-      <label className="text-black text-[14px] font-semibold tracking-wide whitespace-nowrap w-24 text-right shrink-0">
+      <label className="text-black text-[16px] font-semibold tracking-wide whitespace-nowrap w-24 text-right shrink-0">
         {label}
       </label>
       {children}
@@ -152,14 +152,7 @@ export default function CasinoSettingsModal({
               <Select
                 value={settings.language}
                 onChange={(v) => update("language", v)}
-                options={["English", "中文"]}
-              />
-            </Field>
-
-            <Field label="Shoe No:">
-              <Input
-                value={settings.shoeNo}
-                onChange={(v) => update("shoeNo", v as string)}
+                options={["English"]}
               />
             </Field>
 
@@ -198,11 +191,17 @@ export default function CasinoSettingsModal({
 
           {/* RIGHT */}
           <div className="flex flex-col gap-0.5">
-            <Field label="Timer:">
+            {/* <Field label="Timer:">
               <Input
                 type="number"
                 value={settings.timer}
                 onChange={(v) => update("timer", v as number)}
+              />
+            </Field> */}
+            <Field label="Shoe No:">
+              <Input
+                value={settings.shoeNo}
+                onChange={(v) => update("shoeNo", v as string)}
               />
             </Field>
 

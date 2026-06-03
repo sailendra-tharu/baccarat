@@ -1,10 +1,15 @@
 import { useEffect, useState, useRef, memo } from "react"
+import { invoke } from "@tauri-apps/api/core";
 import CasinoSettingsModal from "./components/modal";
 import { useAppImages } from "./hooks/useAppImages";
-import emailjs from '@emailjs/browser';
-import localforage from 'localforage';
 
 const KEYWORD = "88Enter";
+
+type PendriveLicenseStatus = {
+  unlocked: boolean;
+  message: string;
+  license_path?: string | null;
+}
 
 type Bead = "banker" | "player" | "tie" | "bankerPair" | "playerPair" | "super6"
 
@@ -312,70 +317,33 @@ export default function App() {
 
   const [open, setOpen] = useState(false);
 
-  // Security Lock State (null = checking database)
+  // Security Lock State (null = checking pendrive license)
   const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null);
+  const [licenseMessage, setLicenseMessage] = useState("Checking pendrive license...");
+  const [licensePath, setLicensePath] = useState<string | null>(null);
+  const [isCheckingLicense, setIsCheckingLicense] = useState(false);
+
+  const checkPendriveLicense = async () => {
+    setIsCheckingLicense(true);
+    try {
+      const status = await invoke<PendriveLicenseStatus>("check_pendrive_license");
+      setIsUnlocked(status.unlocked);
+      setLicenseMessage(status.message);
+      setLicensePath(status.license_path ?? null);
+    } catch (error) {
+      setIsUnlocked(false);
+      setLicensePath(null);
+      setLicenseMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsCheckingLicense(false);
+    }
+  };
 
   useEffect(() => {
-    localforage.getItem("baccarat_is_unlocked").then((value) => {
-      setIsUnlocked(value === true);
-    }).catch(() => {
-      setIsUnlocked(false);
-    });
+    checkPendriveLicense();
+    const interval = window.setInterval(checkPendriveLicense, 3000);
+    return () => window.clearInterval(interval);
   }, []);
-
-  // Keep key in memory ONLY! Never save it to localStorage so the user can't find it.
-  // If they close the app, a new key will generate next time.
-  const [securityKey] = useState(() => {
-    // Remove the old insecure key if it exists from previous tests
-    localStorage.removeItem("baccarat_security_key");
-    return Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit
-  });
-  const [inputKey, setInputKey] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
-  const [emailSent, setEmailSent] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-
-  const sendSecurityEmail = async () => {
-    setIsSending(true);
-    setErrorMsg("");
-    try {
-      const SERVICE_ID = "service_utksddh";
-      const TEMPLATE_ID = "template_33in5s9";
-      const PUBLIC_KEY = "85bCTdpgmnbs4VGHh";
-
-      await emailjs.send(
-        SERVICE_ID,
-        TEMPLATE_ID,
-        {
-          title: "New Security Key",
-          name: "Baccarat System",
-          email: "system@baccarat.local",
-          message: `A new Baccarat installation was detected. The security key is: ${securityKey}`
-        },
-        PUBLIC_KEY
-      );
-      setEmailSent(true);
-      setErrorMsg("");
-    } catch (error: any) {
-      console.error("Failed to send email:", error);
-      if (error && error.text) {
-        setErrorMsg("EmailJS: " + error.text);
-      } else {
-        setErrorMsg("Failed to send email. Please try again.");
-      }
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const verifyKey = async () => {
-    if (inputKey === securityKey) {
-      await localforage.setItem("baccarat_is_unlocked", true);
-      setIsUnlocked(true);
-    } else {
-      setErrorMsg("Invalid key. Please try again.");
-    }
-  };
 
   const bufferRef = useRef("");
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -449,12 +417,12 @@ export default function App() {
     chips: { label?: React.ReactNode; bg: string; isCircle?: boolean }[]
     text: string
   }) => (
-    <div className="flex items-center gap-2 whitespace-nowrap text-[13px] font-black tracking-wider text-[#ffe7a8]">
+    <div className="flex items-center gap-2 whitespace-nowrap text-[22px] font-black tracking-wider text-[#ffe7a8]">
       <div className="flex gap-1">
         {chips.map((c, i) => (
           <div
             key={i}
-            className={`grid h-5 w-5 place-items-center text-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.35)] overflow-hidden ${c.isCircle ? 'rounded-full' : 'rounded-[4px] text-[12px]'}`}
+            className={`grid h-10 w-10 place-items-center text-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.35)] overflow-hidden ${c.isCircle ? 'rounded-full' : 'rounded-[4px] text-[12px]'}`}
             style={{ backgroundColor: c.bg }}
           >
             {c.label}
@@ -602,38 +570,23 @@ export default function App() {
           <h1 className="text-2xl font-black tracking-widest text-[#ffd25c] mb-2 text-center">
             SYSTEM LOCKED
           </h1>
-          <p className="text-gray-300 text-center mb-8 text-sm">
-            This is a new installation. Please enter the security key to unlock the application.
+          <p className="text-gray-300 text-center mb-6 text-sm">
+            Insert the licensed pendrive for this computer to unlock the application.
           </p>
 
-          <input
-            type="text"
-            value={inputKey}
-            onChange={(e) => setInputKey(e.target.value)}
-            placeholder="Enter 6-digit key"
-            className="w-full bg-black/50 border border-blue-400/50 rounded-lg px-6 py-4 text-center text-2xl tracking-[0.5em] font-mono text-white focus:outline-none focus:border-[#ffd25c] transition-colors"
-            maxLength={6}
-          />
-
-          {errorMsg && (
-            <div className="mt-4 text-red-400 text-sm font-semibold">{errorMsg}</div>
-          )}
+          <div className="w-full rounded-lg border border-blue-400/40 bg-black/45 px-4 py-4 text-center">
+            <div className="text-sm font-bold text-white">{licenseMessage}</div>
+            {licensePath && (
+              <div className="mt-2 break-all text-xs text-blue-200">{licensePath}</div>
+            )}
+          </div>
 
           <button
-            onClick={verifyKey}
+            onClick={checkPendriveLicense}
+            disabled={isCheckingLicense}
             className="w-full mt-6 bg-gradient-to-r from-[#d6b54b] to-[#8f6f1d] text-black font-black text-lg py-3 rounded-lg shadow-lg hover:brightness-110 active:scale-95 transition-all"
           >
-            UNLOCK
-          </button>
-
-          <div className="w-full h-px bg-white/10 my-6" />
-
-          <button
-            onClick={sendSecurityEmail}
-            disabled={isSending}
-            className="text-sm text-blue-300 hover:text-white transition-colors underline disabled:opacity-50"
-          >
-            {isSending ? "Sending..." : emailSent ? "Resend Key to Admin" : "Send Key to Admin Email"}
+            {isCheckingLicense ? "CHECKING..." : "CHECK PENDRIVE"}
           </button>
         </div>
       </div>
@@ -686,7 +639,7 @@ export default function App() {
               {/* Header */}
               <div className="relative flex flex-wrap items-center justify-between gap-x-3 gap-y-1 bg-blue-800 px-3 py-2 md:px-4 md:min-h-[56px]">
                 <div className="flex items-center gap-3">
-                  <div className="text-[14px] sm:text-[18px] md:text-[22px] lg:text-[26px] font-black tracking-wide text-[#ffd25c] drop-shadow-[0_2px_0_rgba(0,0,0,0.35)] whitespace-nowrap">
+                  <div className="text-[14px] md:text-[40px]  font-black tracking-wide text-[#ffd25c] drop-shadow-[0_2px_0_rgba(0,0,0,0.35)] whitespace-nowrap">
                     WELCOME TO BACCARAT
                   </div>
                 </div>
@@ -782,6 +735,10 @@ export default function App() {
                             <div className="h-4 w-4 md:h-6 md:w-6 rounded-full border-[3px] border-blue-800" />
                             <div className="h-4 w-4 md:h-6 md:w-6 rounded-full bg-red-800" />
                             <div className="h-4 w-4 md:h-6 md:w-6 rounded-full bg-blue-800" />
+                            <div className="grid h-4 w-4 place-items-center md:h-6 md:w-6">{beadStick("banker")}</div>
+                            <div className="grid h-4 w-4 place-items-center md:h-6 md:w-6">{beadStick("player")}</div>
+                            <div className="grid h-4 w-4 place-items-center md:h-6 md:w-6">{beadPin("banker")}</div>
+                            <div className="grid h-4 w-4 place-items-center md:h-6 md:w-6">{beadPin("player")}</div>
                           </div>
                         </div>
                       </div>
