@@ -320,22 +320,16 @@ export default function App() {
   // Security Lock State (null = checking pendrive license)
   const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null);
   const [licenseMessage, setLicenseMessage] = useState("Checking pendrive license...");
-  const [licensePath, setLicensePath] = useState<string | null>(null);
-  const [isCheckingLicense, setIsCheckingLicense] = useState(false);
+  const missingPendriveDialogShownRef = useRef(false);
 
   const checkPendriveLicense = async () => {
-    setIsCheckingLicense(true);
     try {
       const status = await invoke<PendriveLicenseStatus>("check_pendrive_license");
       setIsUnlocked(status.unlocked);
       setLicenseMessage(status.message);
-      setLicensePath(status.license_path ?? null);
     } catch (error) {
       setIsUnlocked(false);
-      setLicensePath(null);
       setLicenseMessage(error instanceof Error ? error.message : String(error));
-    } finally {
-      setIsCheckingLicense(false);
     }
   };
 
@@ -344,6 +338,18 @@ export default function App() {
     const interval = window.setInterval(checkPendriveLicense, 3000);
     return () => window.clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (isUnlocked === true) {
+      missingPendriveDialogShownRef.current = false;
+      return;
+    }
+
+    if (isUnlocked === false && !missingPendriveDialogShownRef.current) {
+      missingPendriveDialogShownRef.current = true;
+      invoke("show_pendrive_required_dialog", { message: licenseMessage }).catch(() => { });
+    }
+  }, [isUnlocked, licenseMessage]);
 
   const bufferRef = useRef("");
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -402,13 +408,6 @@ export default function App() {
     };
   }, [isUnlocked]);
 
-
-  const gridBg = (cell: number, line: string) =>
-    ({
-      backgroundImage: `linear-gradient(${line} 1px, transparent 1px), linear-gradient(90deg, ${line} 1px, transparent 1px)`,
-      backgroundSize: `${cell}px ${cell}px`,
-      backgroundPosition: `0 0`,
-    }) as const
 
   const HeaderBetChip = ({
     chips,
@@ -556,41 +555,11 @@ export default function App() {
   }
 
   if (isUnlocked === null) {
-    return <div className="h-screen w-full bg-black"></div>; // Blank screen while checking DB
+    return <div className="h-screen w-full bg-black"></div>;
   }
 
   if (isUnlocked === false) {
-    return (
-      <div className="h-screen w-full bg-black flex flex-col items-center justify-center text-white relative">
-        <div className="absolute inset-0 bg-blue-900/20" style={gridBg(40, "rgba(255,255,255,0.05)")} />
-
-        <div className="z-10 bg-[#0b1b78] p-6 sm:p-10 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] border border-blue-500/30 flex flex-col items-center w-full max-w-md mx-4">
-          <img src={baccaratlogo} alt="Logo" className="w-32 sm:w-48 mb-6 sm:mb-8 drop-shadow-2xl" />
-
-          <h1 className="text-2xl font-black tracking-widest text-[#ffd25c] mb-2 text-center">
-            SYSTEM LOCKED
-          </h1>
-          <p className="text-gray-300 text-center mb-6 text-sm">
-            Insert the licensed pendrive for this computer to unlock the application.
-          </p>
-
-          <div className="w-full rounded-lg border border-blue-400/40 bg-black/45 px-4 py-4 text-center">
-            <div className="text-sm font-bold text-white">{licenseMessage}</div>
-            {licensePath && (
-              <div className="mt-2 break-all text-xs text-blue-200">{licensePath}</div>
-            )}
-          </div>
-
-          <button
-            onClick={checkPendriveLicense}
-            disabled={isCheckingLicense}
-            className="w-full mt-6 bg-gradient-to-r from-[#d6b54b] to-[#8f6f1d] text-black font-black text-lg py-3 rounded-lg shadow-lg hover:brightness-110 active:scale-95 transition-all"
-          >
-            {isCheckingLicense ? "CHECKING..." : "CHECK PENDRIVE"}
-          </button>
-        </div>
-      </div>
-    );
+    return <div className="h-screen w-full bg-black"></div>;
   }
 
   return (
