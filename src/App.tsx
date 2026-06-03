@@ -340,11 +340,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (isUnlocked === true) {
-      missingPendriveDialogShownRef.current = false;
-      return;
-    }
-
     if (isUnlocked === false && !missingPendriveDialogShownRef.current) {
       missingPendriveDialogShownRef.current = true;
       invoke("show_pendrive_required_dialog", { message: licenseMessage }).catch(() => { });

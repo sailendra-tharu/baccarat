@@ -212,12 +212,39 @@ fn removable_roots() -> Vec<PathBuf> {
 
     #[cfg(target_os = "windows")]
     {
-        for letter in b'A'..=b'Z' {
-            let root = format!("{}:\\", letter as char);
-            let path = PathBuf::from(root);
-            if path.exists() {
-                roots.push(path);
+        use windows_sys::Win32::Storage::FileSystem::{
+            GetDriveTypeW, GetLogicalDriveStringsW, DRIVE_FIXED, DRIVE_REMOVABLE,
+        };
+        use windows_sys::Win32::System::Diagnostics::Debug::{
+            SetErrorMode, SEM_FAILCRITICALERRORS, SEM_NOOPENFILEERRORBOX,
+        };
+
+        unsafe {
+            SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX);
+        }
+
+        let mut buffer = vec![0u16; 512];
+        let length = unsafe { GetLogicalDriveStringsW(buffer.len() as u32, buffer.as_mut_ptr()) };
+
+        if length == 0 {
+            return roots;
+        }
+
+        let mut start = 0usize;
+        for index in 0..length as usize {
+            if buffer[index] != 0 {
+                continue;
             }
+
+            if index > start {
+                let root = String::from_utf16_lossy(&buffer[start..index]);
+                let drive_type = unsafe { GetDriveTypeW(buffer[start..=index].as_ptr()) };
+                if drive_type == DRIVE_REMOVABLE || drive_type == DRIVE_FIXED {
+                    roots.push(PathBuf::from(root));
+                }
+            }
+
+            start = index + 1;
         }
     }
 
