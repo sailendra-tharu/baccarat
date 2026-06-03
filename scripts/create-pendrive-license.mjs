@@ -1,10 +1,13 @@
-import { chmodSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const LICENSE_FILE_NAME = "baccarat-license.json";
 const LICENSE_PRODUCT = "baccarat-desktop";
 const LICENSE_SIGNING_SECRET = "baccarat-license-v1-5f7c1f2e6d9a4b8c91e3a702d14f0c65";
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+const REGISTRY_PATH = join(SCRIPT_DIR, "license-registry.json");
 
 function fnv1a64(input) {
   let hash = 0xcbf29ce484222325n;
@@ -23,6 +26,21 @@ function licenseSignature(key) {
   return fnv1a64(
     `${LICENSE_PRODUCT}|license|${key.trim()}|${LICENSE_SIGNING_SECRET}`,
   );
+}
+
+function readRegistry() {
+  if (!existsSync(REGISTRY_PATH)) return [];
+
+  try {
+    const registry = JSON.parse(readFileSync(REGISTRY_PATH, "utf8"));
+    return Array.isArray(registry) ? registry : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeRegistry(registry) {
+  writeFileSync(REGISTRY_PATH, `${JSON.stringify(registry, null, 2)}\n`);
 }
 
 const [, , key, targetDir] = process.argv;
@@ -63,4 +81,15 @@ if (process.platform === "win32") {
   execFileSync("attrib", ["+r", outputPath], { windowsHide: true });
   execFileSync("attrib", ["+h", outputPath], { windowsHide: true });
 }
+
+const registry = readRegistry();
+registry.push({
+  key,
+  license_signature: license.license_signature,
+  target_path: outputPath,
+  created_at: new Date().toISOString(),
+});
+writeRegistry(registry);
+
 console.log(`Created ${outputPath}`);
+console.log(`Total licenses created from this project: ${registry.length}`);
