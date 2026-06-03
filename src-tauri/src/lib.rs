@@ -6,6 +6,7 @@ use std::sync::OnceLock;
 use tauri::Manager;
 
 const LICENSE_FILE_NAME: &str = "baccarat-license.json";
+const LOCAL_LICENSE_LOCK_FILE_NAME: &str = "baccarat-license-lock";
 const LICENSE_PRODUCT: &str = "baccarat-desktop";
 const LICENSE_SIGNING_SECRET: &str = "baccarat-license-v1-5f7c1f2e6d9a4b8c91e3a702d14f0c65";
 static MACHINE_ID_CACHE: OnceLock<Result<String, String>> = OnceLock::new();
@@ -132,6 +133,14 @@ fn license_signature(key: &str) -> String {
 fn binding_signature(key: &str, machine_id: &str) -> String {
     fnv1a64(&format!(
         "{LICENSE_PRODUCT}|binding|{}|{}|{LICENSE_SIGNING_SECRET}",
+        key.trim(),
+        machine_id.trim()
+    ))
+}
+
+fn local_license_token(key: &str, machine_id: &str) -> String {
+    fnv1a64(&format!(
+        "{LICENSE_PRODUCT}|local-license|{}|{}|{LICENSE_SIGNING_SECRET}",
         key.trim(),
         machine_id.trim()
     ))
@@ -345,6 +354,52 @@ fn hide_license_file(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn local_license_lock_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    if !dir.exists() {
+        fs::create_dir_all(&dir).map_err(|e| format!("Could not create app config dir: {e}"))?;
+    }
+    Ok(dir.join(LOCAL_LICENSE_LOCK_FILE_NAME))
+}
+
+fn ensure_system_allows_license(
+    app: &tauri::AppHandle,
+    key: &str,
+    machine_id: &str,
+) -> Result<(), String> {
+    let path = local_license_lock_path(app)?;
+    let expected = local_license_token(key, machine_id);
+
+    if path.exists() {
+        let existing = fs::read_to_string(&path)
+            .map_err(|e| format!("Could not read local license lock: {e}"))?;
+        if existing.trim() == expected {
+            return Ok(());
+        }
+        return Err("This system is already registered to a different pendrive.".to_string());
+    }
+
+    Ok(())
+}
+
+fn remember_system_license(
+    app: &tauri::AppHandle,
+    key: &str,
+    machine_id: &str,
+) -> Result<(), String> {
+    ensure_system_allows_license(app, key, machine_id)?;
+
+    let path = local_license_lock_path(app)?;
+    if path.exists() {
+        return Ok(());
+    }
+
+    let expected = local_license_token(key, machine_id);
+    fs::write(&path, &expected).map_err(|e| format!("Could not save local license lock: {e}"))?;
+    hide_license_file(&path)?;
+    set_license_readonly(&path, true)
+}
+
 fn write_license(path: &Path, license: &PendriveLicense) -> Result<(), String> {
     if path.exists() {
         set_license_readonly(path, false)?;
@@ -357,7 +412,7 @@ fn write_license(path: &Path, license: &PendriveLicense) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn check_pendrive_license() -> Result<PendriveLicenseStatus, String> {
+async fn check_pendrive_license(app: tauri::AppHandle) -> Result<PendriveLicenseStatus, String> {
     let machine_id = cached_machine_id()?;
     let paths = license_paths();
 
@@ -394,6 +449,13 @@ async fn check_pendrive_license() -> Result<PendriveLicenseStatus, String> {
             Some(bound_machine) if bound_machine == machine_id => {
                 let expected = binding_signature(&license.key, &machine_id);
                 if license.binding_signature.as_deref() == Some(expected.as_str()) {
+                    if let Err(error) =
+                        remember_system_license(&app, &license.key, &machine_id)
+                    {
+                        last_error = error;
+                        continue;
+                    }
+
                     return Ok(PendriveLicenseStatus {
                         unlocked: true,
                         message: "Pendrive license verified.".to_string(),
@@ -406,9 +468,11 @@ async fn check_pendrive_license() -> Result<PendriveLicenseStatus, String> {
                 last_error = "This pendrive is already bound to another computer.".to_string();
             }
             None => {
+                ensure_system_allows_license(&app, &license.key, &machine_id)?;
                 license.bound_machine = Some(machine_id.clone());
                 license.binding_signature = Some(binding_signature(&license.key, &machine_id));
                 write_license(&path, &license)?;
+                remember_system_license(&app, &license.key, &machine_id)?;
 
                 return Ok(PendriveLicenseStatus {
                     unlocked: true,
