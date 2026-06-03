@@ -377,7 +377,7 @@ export default function App() {
 
   useEffect(() => {
     checkPendriveLicense();
-    const interval = window.setInterval(checkPendriveLicense, 5000);
+    const interval = window.setInterval(checkPendriveLicense, 1000);
     return () => window.clearInterval(interval);
   }, []);
 
