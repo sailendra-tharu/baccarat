@@ -320,8 +320,14 @@ export default function App() {
   // Security Lock State (null = checking pendrive license)
   const [isUnlocked, setIsUnlocked] = useState<boolean | null>(null);
   const [licenseMessage, setLicenseMessage] = useState("Checking pendrive license...");
+  const isUnlockedRef = useRef<boolean | null>(null);
   const failedLicenseChecksRef = useRef(0);
   const isCheckingLicenseRef = useRef(false);
+
+  const updateUnlocked = (value: boolean | null) => {
+    isUnlockedRef.current = value;
+    setIsUnlocked(value);
+  };
 
   const closeAppAfterLicenseFailure = () => {
     void invoke("exit_app").catch(() => {
@@ -348,17 +354,21 @@ export default function App() {
     isCheckingLicenseRef.current = true;
     try {
       const status = await invoke<PendriveLicenseStatus>("check_pendrive_license");
-      setLicenseMessage(status.message);
+      if (!isUnlockedRef.current || !status.unlocked) {
+        setLicenseMessage(status.message);
+      }
 
       if (status.unlocked) {
         failedLicenseChecksRef.current = 0;
-        setIsUnlocked(true);
+        updateUnlocked(true);
         return;
       }
 
       handleLicenseFailure();
     } catch (error) {
-      setLicenseMessage(error instanceof Error ? error.message : String(error));
+      if (!isUnlockedRef.current) {
+        setLicenseMessage(error instanceof Error ? error.message : String(error));
+      }
       handleLicenseFailure();
     } finally {
       isCheckingLicenseRef.current = false;

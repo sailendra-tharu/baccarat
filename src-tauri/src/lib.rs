@@ -2,11 +2,13 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::OnceLock;
 use tauri::Manager;
 
 const LICENSE_FILE_NAME: &str = "baccarat-license.json";
 const LICENSE_PRODUCT: &str = "baccarat-desktop";
 const LICENSE_SIGNING_SECRET: &str = "baccarat-license-v1-5f7c1f2e6d9a4b8c91e3a702d14f0c65";
+static MACHINE_ID_CACHE: OnceLock<Result<String, String>> = OnceLock::new();
 
 /// Maps a logical image name to a file name
 fn image_filename(name: &str) -> &'static str {
@@ -136,7 +138,18 @@ fn binding_signature(key: &str, machine_id: &str) -> String {
 }
 
 fn command_output(command: &str, args: &[&str]) -> Option<String> {
-    let output = Command::new(command).args(args).output().ok()?;
+    let mut command = Command::new(command);
+    command.args(args);
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    let output = command.output().ok()?;
     if !output.status.success() {
         return None;
     }
@@ -205,6 +218,10 @@ fn machine_id() -> Result<String, String> {
     {
         Err("Unsupported operating system for pendrive licensing".to_string())
     }
+}
+
+fn cached_machine_id() -> Result<String, String> {
+    MACHINE_ID_CACHE.get_or_init(machine_id).clone()
 }
 
 fn removable_roots() -> Vec<PathBuf> {
@@ -305,7 +322,7 @@ fn write_license(path: &Path, license: &PendriveLicense) -> Result<(), String> {
 
 #[tauri::command]
 async fn check_pendrive_license() -> Result<PendriveLicenseStatus, String> {
-    let machine_id = machine_id()?;
+    let machine_id = cached_machine_id()?;
     let paths = license_paths();
 
     if paths.is_empty() {
