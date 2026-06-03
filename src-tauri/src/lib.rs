@@ -315,9 +315,45 @@ fn read_license(path: &Path) -> Result<PendriveLicense, String> {
     serde_json::from_str(&text).map_err(|e| format!("Invalid license JSON: {e}"))
 }
 
+fn set_license_readonly(path: &Path, readonly: bool) -> Result<(), String> {
+    let mut permissions = fs::metadata(path)
+        .map_err(|e| format!("Could not read license permissions: {e}"))?
+        .permissions();
+    permissions.set_readonly(readonly);
+    fs::set_permissions(path, permissions)
+        .map_err(|e| format!("Could not update license permissions: {e}"))
+}
+
+fn hide_license_file(path: &Path) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        let status = Command::new("attrib")
+            .args(["+h"])
+            .arg(path)
+            .creation_flags(CREATE_NO_WINDOW)
+            .status()
+            .map_err(|e| format!("Could not hide license file: {e}"))?;
+
+        if !status.success() {
+            return Err("Could not hide license file.".to_string());
+        }
+    }
+
+    Ok(())
+}
+
 fn write_license(path: &Path, license: &PendriveLicense) -> Result<(), String> {
+    if path.exists() {
+        set_license_readonly(path, false)?;
+    }
+
     let text = serde_json::to_string_pretty(license).map_err(|e| e.to_string())?;
-    fs::write(path, text).map_err(|e| format!("Could not bind license to this computer: {e}"))
+    fs::write(path, text).map_err(|e| format!("Could not bind license to this computer: {e}"))?;
+    hide_license_file(path)?;
+    set_license_readonly(path, true)
 }
 
 #[tauri::command]

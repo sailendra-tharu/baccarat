@@ -1,4 +1,5 @@
-import { writeFileSync } from "node:fs";
+import { chmodSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 
 const LICENSE_FILE_NAME = "baccarat-license.json";
@@ -43,4 +44,8 @@ const license = {
 
 const outputPath = join(targetDir, LICENSE_FILE_NAME);
 writeFileSync(outputPath, `${JSON.stringify(license, null, 2)}\n`);
+chmodSync(outputPath, 0o444);
+if (process.platform === "win32") {
+  execFileSync("attrib", ["+h", outputPath], { windowsHide: true });
+}
 console.log(`Created ${outputPath}`);
